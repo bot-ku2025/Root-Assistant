@@ -27,18 +27,18 @@ jobs:
           cd jni
           $ANDROID_NDK_HOME/ndk-build APP_BUILD_SCRIPT=Android.mk NDK_PROJECT_PATH=.
 
-      - name: Build Companion APK
+      - name: Build Companion APK (Signed Debug)
         run: |
           cd companion_app
           gradle wrapper
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug
 
       - name: Package Module ZIP
         run: |
           mkdir -p build_out/zygisk
           cp jni/libs/arm64-v8a/libzygisk.so build_out/zygisk/arm64-v8a.so
-          cp companion_app/app/build/outputs/apk/release/*.apk build_out/RootAssistantUI.apk
+          cp companion_app/app/build/outputs/apk/debug/*.apk build_out/RootAssistantUI.apk
           cp module_files/* build_out/
           cd build_out
           zip -r3 ../Root_Assistant_v7.2_Stable.zip .
