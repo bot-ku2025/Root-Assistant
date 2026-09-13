@@ -1,2 +1,2 @@
-feat: upgrade to Major v8.0 with universal deep cloaking and hardening
+feat: add auto-purge step to keep only the latest release
 
