@@ -1,4 +1,4 @@
-name: Build Root Assistant Enterprise
+name: Build Root Assistant
 
 on:
   push:
@@ -17,10 +17,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android NDK
-        uses: nbmdf/setup-ndk@v1
-        with:
-          ndk-version: r25c
+      - name: Install Android NDK
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
       - name: Build Zygisk C++ Library
         run: |
@@ -30,8 +30,8 @@ jobs:
       - name: Build Companion APK
         run: |
           cd companion_app
-          chmod +x gradlew || gradle wrapper
-          gradle assembleRelease || ./gradlew assembleRelease
+          chmod +x gradlew
+          ./gradlew assembleRelease
 
       - name: Package Module ZIP
         run: |
