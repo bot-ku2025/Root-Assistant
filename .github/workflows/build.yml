@@ -1,15 +1,27 @@
-name: Build Root Assistant
+name: Build & Auto Release Root Assistant
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Commit Message for Changelog
+        run: |
+          git log -1 --pretty=%B > changelog.md
+          echo "=== CHANGELOG GENERATED ==="
+          cat changelog.md
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
@@ -27,10 +39,12 @@ jobs:
           cd jni
           $ANDROID_NDK_HOME/ndk-build APP_BUILD_SCRIPT=Android.mk NDK_PROJECT_PATH=.
 
-      - name: Build Companion APK
+      - name: Build Companion APK (Signed Debug)
         run: |
           cd companion_app
-          gradle assembleDebug
+          gradle wrapper
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Package Module ZIP
         run: |
@@ -38,11 +52,43 @@ jobs:
           cp jni/libs/arm64-v8a/libzygisk.so build_out/zygisk/arm64-v8a.so
           cp companion_app/app/build/outputs/apk/debug/*.apk build_out/RootAssistantUI.apk
           cp module_files/* build_out/
+          cp changelog.md build_out/
           cd build_out
           zip -r3 ../Root_Assistant_v7.2_Stable.zip .
+
+      - name: Generate update.json Dynamically
+        run: |
+          VERSION=$(grep "^version=" module_files/module.prop | cut -d= -f2)
+          VERSION_CODE=$(grep "^versionCode=" module_files/module.prop | cut -d= -f2)
+          
+          cat << JSON > update.json
+          {
+            "version": "$VERSION",
+            "versionCode": $VERSION_CODE,
+            "zipUrl": "https://github.com/${{ github.repository }}/releases/download/latest/Root_Assistant_v7.2_Stable.zip",
+            "changelog": "https://raw.githubusercontent.com/${{ github.repository }}/main/changelog.md"
+          }
+          JSON
+
+      - name: Commit Auto-Generated Files Back to Repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add update.json changelog.md
+          git diff-index --quiet HEAD || (git commit -m "auto: update update.json & changelog.md [skip ci]" && git push)
+
+      - name: Publish GitHub Release (Latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Root Assistant v7.2 Release
+          body_path: changelog.md
+          files: Root_Assistant_v7.2_Stable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Root_Assistant_v7.2_Stable
-          path: Root_Assistant_v7.2_Stable.zip
+          path: build_out/
