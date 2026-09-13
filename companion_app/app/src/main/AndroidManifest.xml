@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.stnk.rootassistant">
+
+    <application
+        android:label="Root Assistant Companion"
+        android:theme="@android:style/Theme.DeviceDefault.Dialog.Alert">
+
+        <activity
+            android:name=".ErrorDialogActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance">
+            <intent-filter>
+                <action android:name="com.stnk.rootassistant.SHOW_ERROR"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

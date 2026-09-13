@@ -1,0 +1,9 @@
+id=root_assistant
+name=Root Assistant
+version=v7.2 [Stable]
+versionCode=7002
+author=STNK
+support=https://t.me/MuhammadDimasRidho
+donate=https://t.me/MuhammadDimasRidho
+description=kernel VFS cloaking & userspace shield with elite scanning & isolated safety diagnostics.
+zygisk=true

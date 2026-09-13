@@ -1,0 +1,22 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.stnk.rootassistant'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.stnk.rootassistant"
+        minSdk 26
+        targetSdk 33
+        versionCode 7002
+        versionName "7.2"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
