@@ -27,12 +27,10 @@ jobs:
           cd jni
           $ANDROID_NDK_HOME/ndk-build APP_BUILD_SCRIPT=Android.mk NDK_PROJECT_PATH=.
 
-      - name: Build Companion APK (Signed Debug)
+      - name: Build Companion APK
         run: |
           cd companion_app
-          gradle wrapper
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          gradle assembleDebug
 
       - name: Package Module ZIP
         run: |
