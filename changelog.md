@@ -1,2 +1,2 @@
-feat: upgrade Zygisk and service hardening for aggressive accessibility bypass
+feat: upgrade Zygisk core architecture for universal memory-level shielding
 
