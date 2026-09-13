@@ -1,2 +1,2 @@
-feat: upgrade Zygisk core with JNI environment attachment for deep memory shielding
+feat: ultimate level 100 JNI memory reflection hack to force disable accessibility
 
