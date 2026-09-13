@@ -1,2 +1,2 @@
-feat: ultimate level 100 JNI memory reflection hack to force disable accessibility
+fix: remove laggy memory reflection loop and revert to stable clean injection
 
