@@ -1,2 +1,2 @@
-feat: upgrade to Ultimate Level 100 with strict namespace unsharing and full system hardening
+feat: upgrade Zygisk core with JNI environment attachment for deep memory shielding
 
