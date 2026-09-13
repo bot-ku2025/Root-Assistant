@@ -9,4 +9,5 @@ resetprop -n ro.secure 1
 resetprop -n ro.debuggable 0
 resetprop -n ro.build.type user
 resetprop -n ro.build.tags release-keys
+settings put secure accessibility_enabled 0
 settings put secure enabled_accessibility_services "" 2>/dev/null
