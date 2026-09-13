@@ -1,2 +1,2 @@
-fix: update zygisk module structure for universal app process concealment
+feat: enhance Zygisk and service script to aggressively neutralize accessibility flags
 
