@@ -1,2 +1,2 @@
-Major Update: Clean full rewrite with Property and VFS Cloaking
+Major Update v2: Add Maps filtering and expanded Sentinel hiding
 
