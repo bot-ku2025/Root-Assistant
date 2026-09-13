@@ -1,9 +1,7 @@
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/ptrace.h>
-#include <sys/types.h>
+#include <jni.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "zygisk.hpp"
 
 using zygisk::Api;
@@ -20,13 +18,23 @@ public:
         if (!args || !args->nice_name) return;
 
         const char *process_name = env->GetStringUTFChars(args->nice_name, nullptr);
-        if (process_name && strstr(process_name, "com.android.shell") == nullptr) {
-            ptrace(PTRACE_DETACH, 0, NULL, NULL);
+        if (!process_name) return;
+
+        if (strstr(process_name, "com.bca") || 
+            strstr(process_name, "ovo.id") || 
+            strstr(process_name, "alfamart")) {
+            
+            api->setOption(zygisk::Option::FORCE_DENYLIST_UNMOUNT);
         }
 
-        if (process_name) {
-            env->ReleaseStringUTFChars(args->nice_name, process_name);
-        }
+        env->ReleaseStringUTFChars(args->nice_name, process_name);
+    }
+
+    void postAppSpecialize(const AppSpecializeArgs *args) override {
+        // Netralkan status Aksesibilitas & Developer Options di lingkungan aplikasi target
+        setenv("ACCESSIBILITY_ENABLED", "0", 1);
+        setenv("DEVELOPMENT_SETTINGS_ENABLED", "0", 1);
+        setenv("ADB_ENABLED", "0", 1);
     }
 
 private:
