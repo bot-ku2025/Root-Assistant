@@ -20,10 +20,9 @@ public:
         const char *process_name = env->GetStringUTFChars(args->nice_name, nullptr);
         if (!process_name) return;
 
-        // Paksa isolasi total memori & mount namespace untuk BCA & OVO
         if (strstr(process_name, "com.bca") || 
             strstr(process_name, "ovo.id") || 
-            strstr(process_name, "com.ftt.alfagift.id")) {
+            strstr(process_name, "alfamart")) {
             
             api->setOption(zygisk::Option::FORCE_DENYLIST_UNMOUNT);
         }
@@ -32,6 +31,7 @@ public:
     }
 
     void postAppSpecialize(const AppSpecializeArgs *args) override {
+        setenv("ACCESSIBILITY_ENABLED", "0", 1);
     }
 
 private:

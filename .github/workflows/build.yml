@@ -34,6 +34,10 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
+      - name: Download Zygisk Header (Safety Verification)
+        run: |
+          curl -sL "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" -o jni/zygisk.hpp
+
       - name: Build Zygisk C++ Library
         run: |
           cd jni
