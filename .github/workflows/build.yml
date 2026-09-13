@@ -83,10 +83,9 @@ jobs:
       - name: Commit Auto-Generated Version & Json Back to Repository
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com>
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add module_files/module.prop update.json changelog.md
-          git diff-index --quiet HEAD || (git commit -m "auto: bump version & update json [skip ci]" && git push origin main)
+          git diff-index --quiet HEAD || (git commit -m "auto: bump version & update json [skip ci]" && git push)
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
