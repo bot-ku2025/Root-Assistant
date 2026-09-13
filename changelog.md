@@ -1,2 +1,2 @@
-fix: remove laggy memory reflection loop and revert to stable clean injection
+Major Update: Clean full rewrite with Property and VFS Cloaking
 
