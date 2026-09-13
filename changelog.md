@@ -1,2 +1,2 @@
-fix: aggressively clear accessibility flags in service script to bypass accessibility block
+fix: remove modulo reset so version increment is continuous and infinite
 

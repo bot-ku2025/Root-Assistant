@@ -1,7 +1,7 @@
 id=root_assistant
 name=Root Assistant
-version=v7.2 (2)
-versionCode=7241
+version=v7.2 (43)
+versionCode=7243
 author=STNK
 description=kernel VFS cloaking & userspace shield with elite scanning & isolated safety diagnostics.
 updateJson=https://raw.githubusercontent.com/bot-ku2025/Root-Assistant/main/update.json
