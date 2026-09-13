@@ -19,16 +19,14 @@ jobs:
 
       - name: Auto Bump Version & Extract Changelog
         run: |
-          # Tarik pesan commit terakhir untuk changelog
           git log -1 --pretty=%B > changelog.md
-          
-          # Naikkan versionCode otomatis berdasarkan jumlah commit
           BUILD_NUMBER=$(git rev-list --count HEAD)
           NEW_VERSION_CODE=$((7000 + BUILD_NUMBER))
           TIMESTAMP=$(date +'%Y%m%d-%H%M')
-          NEW_VERSION="v7.2-b${BUILD_NUMBER} (${TIMESTAMP})"
+          NEW_VERSION="v7.2-b${BUILD_NUMBER}"
           
-          # Perbarui module.prop
+          echo "REL_TAG=${NEW_VERSION}" >> $GITHUB_ENV
+          
           sed -i "s/^version=.*/version=${NEW_VERSION}/g" module_files/module.prop
           sed -i "s/^versionCode=.*/versionCode=${NEW_VERSION_CODE}/g" module_files/module.prop
 
@@ -78,7 +76,7 @@ jobs:
           {
             "version": "$VERSION",
             "versionCode": $VERSION_CODE,
-            "zipUrl": "https://github.com/${{ github.repository }}/releases/download/latest/Root_Assistant_v7.2_Stable.zip",
+            "zipUrl": "https://github.com/${{ github.repository }}/releases/download/${{ env.REL_TAG }}/Root_Assistant_v7.2_Stable.zip",
             "changelog": "https://raw.githubusercontent.com/${{ github.repository }}/main/changelog.md"
           }
           JSON
@@ -90,12 +88,14 @@ jobs:
           git add module_files/module.prop update.json changelog.md
           git diff-index --quiet HEAD || (git commit -m "auto: bump version & update json [skip ci]" && git push)
 
-      - name: Publish GitHub Release (Latest)
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Root Assistant Dynamic Release
+          tag_name: ${{ env.REL_TAG }}
+          name: Root Assistant ${{ env.REL_TAG }}
           body_path: changelog.md
           files: Root_Assistant_v7.2_Stable.zip
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
