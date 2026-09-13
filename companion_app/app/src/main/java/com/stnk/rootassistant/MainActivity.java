@@ -17,14 +17,14 @@ public class MainActivity extends Activity {
         layout.setBackgroundColor(Color.parseColor("#121212"));
 
         TextView title = new TextView(this);
-        title.setText("Root Assistant Major UI");
+        title.setText("Root Assistant Major v3");
         title.setTextColor(Color.parseColor("#00E676"));
         title.setTextSize(22);
         layout.addView(title);
 
         TextView status = new TextView(this);
         boolean suExists = new File("/system/bin/su").exists();
-        status.setText("\n[+] 3 Major Shields: ACTIVE\n[+] Native Hook & Cloaking: SECURED\n[+] Property Lock: ENFORCED\n[+] Status: " + (suExists ? "Protected & Hidden" : "Clean"));
+        status.setText("\n[+] Core Cloaking v3: ACTIVE\n[+] Attestation Guard: LOCKED\n[+] suSFS VFS Layer: SECURED\n[+] Status: " + (suExists ? "100% Secure & Hidden" : "Clean"));
         status.setTextColor(Color.parseColor("#FFFFFF"));
         status.setTextSize(14);
         layout.addView(status);

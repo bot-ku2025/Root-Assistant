@@ -7,7 +7,7 @@
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 
-class RootAssistantMajorEngine : public zygisk::ModuleBase {
+class RootAssistantMajorV3 : public zygisk::ModuleBase {
 public:
     void onLoad(Api *api, JNIEnv *env) override {
         this->api = api;
@@ -41,4 +41,4 @@ private:
     Api *api;
     JNIEnv *env;
 };
-REGISTER_ZYGISK_MODULE(RootAssistantMajorEngine)
+REGISTER_ZYGISK_MODULE(RootAssistantMajorV3)
