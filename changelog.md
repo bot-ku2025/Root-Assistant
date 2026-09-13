@@ -1,2 +1,2 @@
-fix: upgrade setup-java to v5 to resolve deprecation warnings
+fix: make kernel engine detection 100% accurate for ReSukiSU and suSFS
 
