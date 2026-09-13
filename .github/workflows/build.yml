@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -22,7 +25,7 @@ jobs:
           git log -1 --pretty=%B > changelog.md
           
           TOTAL_COMMITS=$(git rev-list --count HEAD)
-          MINOR_COUNT=$((TOTAL_COMMITS % 10 + 1))
+          MINOR_COUNT=$TOTAL_COMMITS
           
           MAJOR_VERSION="v7.2"
           
