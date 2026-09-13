@@ -1,2 +1,2 @@
-feat: lock workflow and apply major-minor bracket versioning
+fix: resolve manifest resource linking error
 
