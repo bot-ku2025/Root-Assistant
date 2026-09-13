@@ -1,2 +1,2 @@
-fix: remove modulo reset so version increment is continuous and infinite
+feat: upgrade to Major v8.0 with universal deep cloaking and hardening
 
