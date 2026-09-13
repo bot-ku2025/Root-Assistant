@@ -1,2 +1,2 @@
-feat: gabungkan auto release, updateJson, dan changelog otomatis dari commit
+feat: All-in-One Engine (Zygisk JNI bypass, Accessibility fix, OTA updateJson, Auto-Release)
 
