@@ -1,2 +1,2 @@
-feat: add auto-purge step to keep only the latest release
+fix: replace json release parsing with bulletproof awk text parsing
 
