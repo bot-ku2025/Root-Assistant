@@ -1,2 +1,2 @@
-fix: make kernel engine detection 100% accurate for ReSukiSU and suSFS
+fix: aggressively clear accessibility flags in service script to bypass accessibility block
 
