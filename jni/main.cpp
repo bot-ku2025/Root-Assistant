@@ -19,7 +19,7 @@ public:
     }
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
-        LOGD("RootAssistant Zygisk active in app process. Hardening runtime accessibility queries.");
+        LOGD("RootAssistant Zygisk active: neutralizing runtime accessibility queries.");
     }
 
 private:
