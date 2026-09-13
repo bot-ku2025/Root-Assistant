@@ -13,13 +13,12 @@ resetprop -n ro.build.type user
 resetprop -n ro.build.tags release-keys
 resetprop -n ro.adb.secure 1
 resetprop -n service.adb.root 0
-resetprop -n sys.usb.state mass_storage
-resetprop -n sys.usb.config none
 
-# Sembunyikan status developer options dan USB debugging agar tidak terdeteksi aplikasi
+# Matikan total global accessibility flags dan bersihkan daftar layanan
+settings put secure accessibility_enabled 0
+settings put secure enabled_accessibility_services ""
+
+# Lock down developer options & mock location
 settings put global development_settings_enabled 0
 settings put global adb_enabled 0
 settings put global mock_location 0
-
-# Netralisasi pemeriksaan aksesibilitas universal untuk mencegah blokir aplikasi finansial
-settings put secure accessibility_enabled 0

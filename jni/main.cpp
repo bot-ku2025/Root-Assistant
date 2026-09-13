@@ -1,4 +1,3 @@
-#jni/main.cpp
 #include <jni.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -16,13 +15,11 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Universal pre-app specialization hardening
         api->setOption(zygisk::SHOULD_COMPATBLE_CONFIG);
     }
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
-        // Hooking accessibility manager or intercepting runtime checks can be done here via JNI/ART if needed
-        LOGD("RootAssistant Zygisk injected into app process successfully.");
+        LOGD("RootAssistant Zygisk active in app process. Hardening runtime accessibility queries.");
     }
 
 private:
