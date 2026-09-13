@@ -2,13 +2,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sched.h>
+#include <sys/mount.h>
+#include <fcntl.h>
 #include <android/log.h>
 #include "zygisk.hpp"
 
-#define LOG_TAG "RootAssistantLevel100"
+#define LOG_TAG "RootAssistantUltimate"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-class RootAssistantUniversal : public zygisk::ModuleBase {
+class RootAssistantUltimate : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
@@ -16,17 +18,24 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Menggunakan konfigurasi kompatibilitas universal Zygisk
         api->setOption(zygisk::SHOULD_COMPATBLE_CONFIG);
         
-        // Isolasi namespace opsional untuk mencegah aplikasi mendeteksi mount files
-        // unshare(CLONE_NEWNS);
+        // Level 100 Core: Isolasi Mount Namespace Total Tanpa Kompromi
+        // Mencegah aplikasi mendeteksi direktori modul, magisk, ksu, atau mount point aktif
+        if (unshare(CLONE_NEWNS) == 0) {
+            // Ubah propagasi root menjadi privat agar unmount tidak merusak sistem global
+            mount("none", "/", nullptr, MS_REC | MS_PRIVATE, nullptr);
+            
+            // Putuskan dan sembunyikan direktori sensitif dari pandangan proses aplikasi
+            umount2("/data/adb", MNT_DETACH);
+            umount2("/debug_ramdisk", MNT_DETACH);
+            umount2("/sbin", MNT_DETACH);
+            umount2("/apex/com.android.runtime", MNT_DETACH); // Opsional untuk hardening ART
+        }
     }
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
-        // Di sinilah titik injeksi universal untuk menyembunyikan artefak root,
-        // memanipulasi binder calls, dan menetralisir pemeriksaan aksesibilitas runtime.
-        LOGD("RootAssistant Universal Shield active in app process.");
+        LOGD("RootAssistant Ultimate Shield active: Namespace isolated and cloaked.");
     }
 
 private:
@@ -34,4 +43,4 @@ private:
     JNIEnv *env;
 };
 
-REGISTER_ZYGISK_MODULE(RootAssistantUniversal)
+REGISTER_ZYGISK_MODULE(RootAssistantUltimate)
