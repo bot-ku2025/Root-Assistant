@@ -17,11 +17,20 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Commit Message for Changelog
+      - name: Auto Bump Version & Extract Changelog
         run: |
+          # Tarik pesan commit terakhir untuk changelog
           git log -1 --pretty=%B > changelog.md
-          echo "=== CHANGELOG GENERATED ==="
-          cat changelog.md
+          
+          # Naikkan versionCode otomatis berdasarkan jumlah commit
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          NEW_VERSION_CODE=$((7000 + BUILD_NUMBER))
+          TIMESTAMP=$(date +'%Y%m%d-%H%M')
+          NEW_VERSION="v7.2-b${BUILD_NUMBER} (${TIMESTAMP})"
+          
+          # Perbarui module.prop
+          sed -i "s/^version=.*/version=${NEW_VERSION}/g" module_files/module.prop
+          sed -i "s/^versionCode=.*/versionCode=${NEW_VERSION_CODE}/g" module_files/module.prop
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
@@ -34,7 +43,7 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
-      - name: Download Zygisk Header (Safety Verification)
+      - name: Download Zygisk Header
         run: |
           curl -sL "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" -o jni/zygisk.hpp
 
@@ -60,7 +69,7 @@ jobs:
           cd build_out
           zip -r3 ../Root_Assistant_v7.2_Stable.zip .
 
-      - name: Generate update.json Dynamically
+      - name: Update update.json
         run: |
           VERSION=$(grep "^version=" module_files/module.prop | cut -d= -f2)
           VERSION_CODE=$(grep "^versionCode=" module_files/module.prop | cut -d= -f2)
@@ -74,25 +83,19 @@ jobs:
           }
           JSON
 
-      - name: Commit Auto-Generated Files Back to Repository
+      - name: Commit Auto-Generated Version & Json Back to Repository
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add update.json changelog.md
-          git diff-index --quiet HEAD || (git commit -m "auto: update update.json & changelog.md [skip ci]" && git push)
+          git add module_files/module.prop update.json changelog.md
+          git diff-index --quiet HEAD || (git commit -m "auto: bump version & update json [skip ci]" && git push)
 
       - name: Publish GitHub Release (Latest)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Root Assistant v7.2 Release
+          name: Root Assistant Dynamic Release
           body_path: changelog.md
           files: Root_Assistant_v7.2_Stable.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Root_Assistant_v7.2_Stable
-          path: build_out/
