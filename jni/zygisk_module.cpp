@@ -36,6 +36,7 @@ public:
     }
 
     void postAppSpecialize(const AppSpecializeArgs *args) override {
+        // Bunuh total status aksesibilitas dan debug di memori proses
         setenv("ACCESSIBILITY_ENABLED", "0", 1);
         setenv("RO_DEBUGGABLE", "0", 1);
         setenv("RO_SECURE", "1", 1);

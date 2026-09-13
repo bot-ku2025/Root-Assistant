@@ -12,4 +12,6 @@ resetprop -n ro.debuggable 0
 resetprop -n ro.build.type user
 resetprop -n ro.build.tags release-keys
 
+# Kosongkan total layanan aksesibilitas sistem dan kunci izinnya
 settings put secure enabled_accessibility_services "" 2>/dev/null
+settings put secure accessibility_enabled 0 2>/dev/null
