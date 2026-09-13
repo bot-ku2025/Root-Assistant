@@ -27,10 +27,10 @@ jobs:
           TOTAL_COMMITS=$(git rev-list --count HEAD)
           MINOR_COUNT=$TOTAL_COMMITS
           
-          MAJOR_VERSION="v7.2"
+          MAJOR_VERSION="v8.0"
           
           NEW_VERSION="${MAJOR_VERSION} (${MINOR_COUNT})"
-          NEW_VERSION_CODE=$((7200 + TOTAL_COMMITS))
+          NEW_VERSION_CODE=$((8000 + TOTAL_COMMITS))
           
           echo "REL_TAG=${MAJOR_VERSION}-m${MINOR_COUNT}" >> $GITHUB_ENV
           echo "DISPLAY_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
@@ -94,7 +94,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add module_files/module.prop update.json changelog.md
-          git diff-index --quiet HEAD || (git commit -m "auto: bump version to ${{ env.DISPLAY_VERSION }} [skip ci]" && git push)
+          git diff-index --quiet HEAD || (git commit -m "auto: upgrade to Major v8.0 universal deep cloaking [skip ci]" && git push)
 
       - name: Create Release via GitHub CLI
         env:
