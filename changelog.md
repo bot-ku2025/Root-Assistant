@@ -1,2 +1,2 @@
-feat: Hardcore JNI Accessibility Blocker to permanently crush BCA check
+fix: resolve github release server error by using proper dynamic tag
 
