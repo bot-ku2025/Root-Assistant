@@ -22,7 +22,6 @@ jobs:
           git log -1 --pretty=%B > changelog.md
           BUILD_NUMBER=$(git rev-list --count HEAD)
           NEW_VERSION_CODE=$((7000 + BUILD_NUMBER))
-          TIMESTAMP=$(date +'%Y%m%d-%H%M')
           NEW_VERSION="v7.2-b${BUILD_NUMBER}"
           
           echo "REL_TAG=${NEW_VERSION}" >> $GITHUB_ENV
@@ -83,10 +82,11 @@ jobs:
 
       - name: Commit Auto-Generated Version & Json Back to Repository
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com>
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git add module_files/module.prop update.json changelog.md
-          git diff-index --quiet HEAD || (git commit -m "auto: bump version & update json [skip ci]" && git push)
+          git diff-index --quiet HEAD || (git commit -m "auto: bump version & update json [skip ci]" && git push origin main)
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
