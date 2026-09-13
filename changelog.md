@@ -1,2 +1,2 @@
-fix: replace json release parsing with bulletproof awk text parsing
+fix: update zygisk module structure for universal app process concealment
 
