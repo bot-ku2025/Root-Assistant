@@ -96,6 +96,17 @@ jobs:
           git add module_files/module.prop update.json changelog.md
           git diff-index --quiet HEAD || (git commit -m "auto: upgrade to Major v8.0 universal deep cloaking [skip ci]" && git push)
 
+      - name: Purge All Previous Releases and Tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning up all old releases and tags..."
+          OLD_TAGS=$(gh release list --limit 200 --json tagName -q '[].tagName')
+          for tag in $OLD_TAGS; do
+            echo "Deleting old release and tag: $tag"
+            gh release delete "$tag" --cleanup-tag -y || true
+          done
+
       - name: Create Release via GitHub CLI
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
