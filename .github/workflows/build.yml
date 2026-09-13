@@ -20,14 +20,17 @@ jobs:
       - name: Auto Bump Version & Extract Changelog
         run: |
           git log -1 --pretty=%B > changelog.md
-          # Hitung jumlah release tag yang sudah ada untuk increment versi simple (v7.1, v7.2, v7.3...)
-          RELEASE_COUNT=$(git tag -l "v7.*" | wc -l)
-          NEXT_VER=$((7 + RELEASE_COUNT + 1))
-          # Jika belum ada tag sama sekali, mulai dari v7.2
-          NEW_VERSION="v7.$((2 + RELEASE_COUNT))"
-          NEW_VERSION_CODE=$((7000 + RELEASE_COUNT + 1))
           
-          echo "REL_TAG=${NEW_VERSION}" >> $GITHUB_ENV
+          TOTAL_COMMITS=$(git rev-list --count HEAD)
+          MINOR_COUNT=$((TOTAL_COMMITS % 10 + 1))
+          
+          MAJOR_VERSION="v7.2"
+          
+          NEW_VERSION="${MAJOR_VERSION} (${MINOR_COUNT})"
+          NEW_VERSION_CODE=$((7200 + TOTAL_COMMITS))
+          
+          echo "REL_TAG=${MAJOR_VERSION}-m${MINOR_COUNT}" >> $GITHUB_ENV
+          echo "DISPLAY_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
           
           sed -i "s/^version=.*/version=${NEW_VERSION}/g" module_files/module.prop
           sed -i "s/^versionCode=.*/versionCode=${NEW_VERSION_CODE}/g" module_files/module.prop
@@ -67,7 +70,7 @@ jobs:
           cp module_files/* build_out/
           cp changelog.md build_out/
           cd build_out
-          zip -r3 ../Root_Assistant_${{ env.REL_TAG }}_Stable.zip .
+          zip -r3 ../Root_Assistant_Stable.zip .
 
       - name: Update update.json
         run: |
@@ -78,7 +81,7 @@ jobs:
           {
             "version": "$VERSION",
             "versionCode": $VERSION_CODE,
-            "zipUrl": "https://github.com/${{ github.repository }}/releases/download/${{ env.REL_TAG }}/Root_Assistant_${{ env.REL_TAG }}_Stable.zip",
+            "zipUrl": "https://github.com/${{ github.repository }}/releases/download/${{ env.REL_TAG }}/Root_Assistant_Stable.zip",
             "changelog": "https://raw.githubusercontent.com/${{ github.repository }}/main/changelog.md"
           }
           JSON
@@ -88,13 +91,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add module_files/module.prop update.json changelog.md
-          git diff-index --quiet HEAD || (git commit -m "auto: bump version to ${{ env.REL_TAG }} & update json [skip ci]" && git push)
+          git diff-index --quiet HEAD || (git commit -m "auto: bump version to ${{ env.DISPLAY_VERSION }} [skip ci]" && git push)
 
-      - name: Create Clean Release via GitHub CLI
+      - name: Create Release via GitHub CLI
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ env.REL_TAG }}" \
-            --title "Root Assistant ${{ env.REL_TAG }}" \
+            --title "Root Assistant ${{ env.DISPLAY_VERSION }}" \
             --notes-file changelog.md \
-            Root_Assistant_${{ env.REL_TAG }}_Stable.zip
+            Root_Assistant_Stable.zip
