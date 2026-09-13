@@ -1,2 +1,2 @@
-feat: apply Major Update v3 code enhancements
+feat: lock workflow and apply major-minor bracket versioning
 
