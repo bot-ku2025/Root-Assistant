@@ -7,7 +7,7 @@
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 
-class RootAssistantHardcore : public zygisk::ModuleBase {
+class RootAssistantMajorEngine : public zygisk::ModuleBase {
 public:
     void onLoad(Api *api, JNIEnv *env) override {
         this->api = api;
@@ -16,7 +16,6 @@ public:
 
     void preAppSpecialize(AppSpecializeArgs *args) override {
         if (!args || !args->nice_name) return;
-
         const char *process_name = env->GetStringUTFChars(args->nice_name, nullptr);
         if (!process_name) return;
 
@@ -26,25 +25,20 @@ public:
             strstr(process_name, "topjohnwu") ||
             strstr(process_name, "security") ||
             strstr(process_name, "momo") ||
-            strstr(process_name, "ami") ||
             strstr(process_name, "root")) {
             
             api->setOption(zygisk::Option::FORCE_DENYLIST_UNMOUNT);
         }
-
         env->ReleaseStringUTFChars(args->nice_name, process_name);
     }
 
     void postAppSpecialize(const AppSpecializeArgs *args) override {
-        // Bunuh total status aksesibilitas dan debug di memori proses
         setenv("ACCESSIBILITY_ENABLED", "0", 1);
         setenv("RO_DEBUGGABLE", "0", 1);
         setenv("RO_SECURE", "1", 1);
     }
-
 private:
     Api *api;
     JNIEnv *env;
 };
-
-REGISTER_ZYGISK_MODULE(RootAssistantHardcore)
+REGISTER_ZYGISK_MODULE(RootAssistantMajorEngine)
