@@ -30,6 +30,7 @@ jobs:
       - name: Build Companion APK
         run: |
           cd companion_app
+          gradle wrapper
           chmod +x gradlew
           ./gradlew assembleRelease
 
