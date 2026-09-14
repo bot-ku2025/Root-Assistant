@@ -33,13 +33,25 @@ jobs:
           mkdir -p jni
           wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
 
-      - name: Capture Git Info
+      - name: Capture Git Info & Auto-detect Version from module.prop
         run: |
           echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
           echo "BUILD_DATE=$(TZ=Asia/Jakarta date '+%A, %d %B %Y')" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
+          
+          # Auto-extract version from module.prop (e.g., version=v1.7-Phase7 -> v1.7-Phase7)
+          if [ -f module.prop ]; then
+            MOD_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r' | tr ' ' '_')
+            if [ -n "$MOD_VERSION" ]; then
+              echo "VERSION_TAG=$MOD_VERSION" >> $GITHUB_ENV
+            else
+              echo "VERSION_TAG=v1.7-Phase7" >> $GITHUB_ENV
+            fi
+          else
+            echo "VERSION_TAG=v1.7-Phase7" >> $GITHUB_ENV
+          fi
 
       - name: Build with NDK & Capture Error Log
         id: compile
@@ -65,13 +77,15 @@ jobs:
         if: env.build_status == 'SUCCESS'
         run: |
           mkdir -p build_output
-          zip -r build_output/Root_Assistant_Release.zip module.prop post-fs-data.sh service.sh sepolicy.rule libs/
+          ZIP_NAME="Root-Assistant-${{ env.VERSION_TAG }}.zip"
+          zip -r "build_output/$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule libs/
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
       - name: Create GitHub Release & Upload ZIP
         if: env.build_status == 'SUCCESS' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build_output/Root_Assistant_Release.zip
+          files: build_output/${{ env.ZIP_NAME }}
           name: Release ${{ github.ref_name }}
           body_path: changelog.txt
         env:
@@ -83,14 +97,15 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          document: build_output/Root_Assistant_Release.zip
+          document: build_output/${{ env.ZIP_NAME }}
           message: |
             🚀 ROOT ASSISTANT BUILD UPDATE
 
             Status: ✅ Sukses & Released
-            📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+            📦 File: ${{ env.ZIP_NAME }}
+            🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
-            🌿 Branch: ${{ env.BRANCH_NAME }}
+            🌿 Versi Modul: ${{ env.VERSION_TAG }}
             🔑 Commit ID: ${{ env.COMMIT_SHA }}
             📅 Tanggal: ${{ env.BUILD_DATE }}
             ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
@@ -107,5 +122,4 @@ jobs:
             Status: ❌ Gagal (Error pada Release/Compiler)
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
-
             ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
