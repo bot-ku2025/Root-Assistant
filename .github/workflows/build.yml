@@ -15,10 +15,11 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Setup Android NDK
-      uses: nttld/setup-ndk@v3
+      uses: android-actions/setup-ndk@v3
       with:
         ndk-version: r26b
-        add-to-path: true
+        cmake-version: 'latest'
+        local-cache: true
 
     - name: Download Zygisk Header
       run: |
@@ -77,7 +78,7 @@ jobs:
         message: |
           ❌ ROOT ASSISTANT BUILD FAILED
 
-          Status: ✅ Gagal Kompilasi (Error Detected)
+          Status: ❌ Gagal Kompilasi (Error Detected)
           📦 Build Run: Build Hybrid Module #${{ github.run_number }}
           📌 Topik Update: ${{ github.event.head_commit.message }}
           
