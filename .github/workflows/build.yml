@@ -102,7 +102,7 @@ jobs:
             🚀 ROOT ASSISTANT BUILD UPDATE
 
             Status: ✅ Sukses & Released
-            📦 File: ${{ env.ZIP_NAME }}
+            📦 File: *Root-Assistant-${{ env.VERSION_TAG }}*
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             🌿 Versi Modul: ${{ env.VERSION_TAG }}
