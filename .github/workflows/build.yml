@@ -87,6 +87,12 @@ jobs:
           zip -r ../Root_Assistant_Stable.zip .
           cd ..
 
+      - name: Get Build Timestamp
+        id: timestamp
+        run: |
+          echo "date=$(TZ='Asia/Jakarta' date '+%A, %d %B %Y')" >> $GITHUB_OUTPUT
+          echo "time=$(TZ='Asia/Jakarta' date '+%H:%M:%S WIB')" >> $GITHUB_OUTPUT
+
       - name: Save Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -98,12 +104,13 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: html
           message: |
-            🚀 <b>ROOT ASSISTANT BUILD UPDATE</b>
+            <b>🚀 ROOT ASSISTANT BUILD UPDATE</b>
             
-            ✅ <b>Status:</b> Sukses (Stable)
-            📌 <b>Topik Update:</b> ${{ github.event.head_commit.message }}
-            🔑 <b>Commit ID:</b> <code>${{ github.sha }}</code>
-            📅 <b>Tanggal:</b> $(TZ='Asia/Jakarta' date '+%A, %d %B %Y')
-            ⏰ <b>Waktu Selesai:</b> $(TZ='Asia/Jakarta' date '+%H:%M:%S WIB')
-            🌿 <b>Branch:</b> ${{ github.ref_name }}
+            <b>✅ Status:</b> Sukses (Stable)
+            <b>📌 Topik Update:</b> ${{ github.event.head_commit.message }}
+            <b>🔑 Commit ID:</b> <code>${{ github.sha }}</code>
+            <b>📅 Tanggal:</b> ${{ steps.timestamp.outputs.date }}
+            <b>⏰ Waktu Selesai:</b> ${{ steps.timestamp.outputs.time }}
+            <b>🌿 Branch:</b> ${{ github.ref_name }}
