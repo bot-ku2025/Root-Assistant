@@ -4,6 +4,10 @@ on:
     branches: [ main ]
     tags:
       - 'v*'
+
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -82,7 +86,7 @@ jobs:
           message: |
             🚀 ROOT ASSISTANT BUILD UPDATE
 
-            Status: ✅ Sukses (Release Ready)
+            Status: ✅ Sukses & Released
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             🌿 Branch: ${{ env.BRANCH_NAME }}
@@ -91,7 +95,7 @@ jobs:
             ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
 
       - name: Send Telegram Notification (Failure with Error Log)
-        if: always() && env.build_status == 'FAILURE'
+        if: always() && (env.build_status == 'FAILURE' || failure())
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -99,11 +103,8 @@ jobs:
           message: |
             ❌ ROOT ASSISTANT BUILD FAILED
 
-            Status: ❌ Gagal Kompilasi (Error Detected)
+            Status: ❌ Gagal (Error pada Release/Compiler)
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
-
-            🔍 Detail Error Compiler:
-            ${{ env.error_details }}
 
             ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
