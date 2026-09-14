@@ -1,16 +1,15 @@
 #!/system/bin/sh
 MODDIR=${0%/*}
-SUSFS_DIR="/sys/fs/susfs"
 
-if [ -d "$SUSFS_DIR" ]; then
-    [ -d "/sys/devices/platform/kcal_ctrl" ] && echo "/sys/devices/platform/kcal_ctrl" > ${SUSFS_DIR}/sus_path
-    [ -d "/sys/module/kcal_ctrl" ] && echo "/sys/module/kcal_ctrl" > ${SUSFS_DIR}/sus_path
-    [ -d "/sys/module/simple_lmk" ] && echo "/sys/module/simple_lmk" > ${SUSFS_DIR}/sus_path
-
+if command -v ksu_susfs >/dev/null 2>&1; then
+    ksu_susfs add_sus_path /sys/devices/platform/kcal_ctrl
+    ksu_susfs add_sus_path /sys/module/kcal_ctrl
+    ksu_susfs add_sus_path /sys/module/simple_lmk
+    
     for f in /system/etc/permissions/*lineage*.xml; do
-        [ -f "$f" ] && echo "$f" > ${SUSFS_DIR}/sus_path
+        [ -f "$f" ] && ksu_susfs add_sus_path "$f"
     done
     for f in /vendor/etc/permissions/*lineage*.xml; do
-        [ -f "$f" ] && echo "$f" > ${SUSFS_DIR}/sus_path
+        [ -f "$f" ] && ksu_susfs add_sus_path "$f"
     done
 fi
