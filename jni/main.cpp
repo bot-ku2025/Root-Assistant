@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <stdint.h>
 #include <cstring>
+#include <dlfcn.h>
 
 #define LOG_TAG "RootAssistant"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -56,7 +57,7 @@ struct Api {
 };
 } // namespace zygisk
 
-// Fungsi pipa pengiriman data terhubung ke Companion daemon (menggunakan casting void* ke int)
+// Fungsi pipa pengiriman data ke Companion daemon
 static void sendDataToCompanion(zygisk::Api *api, const char *package_name) {
     if (!api || !package_name) return;
     int fd = (int)(intptr_t)api->connectCompanion();
@@ -68,19 +69,40 @@ static void sendDataToCompanion(zygisk::Api *api, const char *package_name) {
     }
 }
 
-class RootAssistantPhase5Interconnected : public zygisk::ModuleBase {
+// Hook handler contoh untuk fungsi open/access (Phase 6: Runtime API Evasion)
+static int (*orig_open)(const char *pathname, int flags, mode_t mode) = nullptr;
+
+static int hooked_open(const char *pathname, int flags, mode_t mode) {
+    if (pathname) {
+        // Contoh intervensi penyembunyian jalur berkas biner root umum
+        if (strstr(pathname, "/sbin/su") || strstr(pathname, "/system/bin/su") || strstr(pathname, "/system/xbin/su")) {
+            LOGD("[PLT HOOK] Blocked access attempt to root binary: %s", pathname);
+            errno = ENOENT;
+            return -1;
+        }
+    }
+    if (orig_open) {
+        return orig_open(pathname, flags, mode);
+    }
+    return -1;
+}
+
+class RootAssistantPhase6 : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
         this->env = env;
         
-        // 1. Gatekeeper Lingkungan (ResuKisu + SuSFS / KSU Next) sebagai gerbang mutlak
+        // 1. Gatekeeper Lingkungan (ResuKisu + SuSFS / KSU Next)
         if (!validateEnvironment()) {
             LOGE("[ABORT] Unsupported environment! Root-Assistant requires ResuKisu+SuSFS or valid KSU Next.");
             return;
         }
         
-        LOGI("RootAssistant Phase 5 (Interconnected IPC Pipeline) loaded successfully.");
+        // Aktifkan patch dlopen agar hooking mencakup pustaka dinamis aplikasi
+        api->setOption(zygisk::Api::PATCH_DLOPEN);
+        
+        LOGI("RootAssistant Phase 6 (PLT Hooking & Runtime Evasion) loaded successfully.");
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
@@ -89,12 +111,16 @@ public:
             if (nice_name && env) {
                 const char *name = env->GetStringUTFChars(nice_name, nullptr);
                 if (name) {
-                    // 2. Filter Target Aplikasi menyalurkan data langsung ke pipa IPC
+                    // 2. Filter Target Aplikasi menyalurkan data ke pipa IPC & Hooking
                     if (strstr(name, "com.android") == nullptr) {
-                        LOGD("Pipeline Target App Detected -> %s", name);
-                        
-                        // 3. Mengumpankan nama paket langsung ke daemon companion secara real-time
+                        LOGD("Phase 6 Target App Secured -> %s", name);
                         sendDataToCompanion(api, name);
+                        
+                        // Daftarkan PLT Hook pada target proses aplikasi
+                        if (api) {
+                            api->pltHookRegister(nullptr, "open", (void *)hooked_open, (void **)&orig_open);
+                            api->pltHookCommit();
+                        }
                     }
                     env->ReleaseStringUTFChars(nice_name, name);
                 }
@@ -103,7 +129,7 @@ public:
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
-        LOGI("System server specialization secured under interconnected pipeline.");
+        LOGI("System server specialization secured under Phase 6 runtime evasion.");
     }
 
 private:
@@ -131,21 +157,21 @@ private:
     JNIEnv *env = nullptr;
 };
 
-// 4. Handler Companion Daemon yang menerima data terhubung dari pipa aplikasi
+// Handler Companion Daemon
 static void companion_handler(int socket_fd) {
     uint32_t len = 0;
     if (read(socket_fd, &len, sizeof(len)) == sizeof(len) && len > 0 && len < 256) {
         char package_name[256];
         memset(package_name, 0, sizeof(package_name));
         if (read(socket_fd, package_name, len) > 0) {
-            LOGI("[DAEMON PIPELINE] Successfully received target package through IPC: %s", package_name);
+            LOGI("[DAEMON PIPELINE] Phase 6 received target package: %s", package_name);
         }
     }
     close(socket_fd);
 }
 
 static void register_module(zygisk::Api *api) {
-    zygisk::ModuleBase *module = new RootAssistantPhase5Interconnected();
+    zygisk::ModuleBase *module = new RootAssistantPhase6();
     api->registerModule(module);
 }
 
