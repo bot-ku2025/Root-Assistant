@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -84,7 +86,7 @@ jobs:
           [ -f customize.sh ] && cp -f customize.sh build_staging/
 
           cd build_staging
-          zip -r ../Root_Assistant_Stable.zip .
+          zip -r ../Root_Assistant_Release.zip .
           cd ..
 
       - name: Prepare Build Metadata
@@ -92,12 +94,11 @@ jobs:
         id: metadata
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "status_text=✅ Sukses (Stable)" >> $GITHUB_OUTPUT
+            echo "status_text=✅ Sukses (Release Ready)" >> $GITHUB_OUTPUT
           else
             echo "status_text=❌ Gagal (Failed)" >> $GITHUB_OUTPUT
           fi
           
-          # Mengambil hash pendek 7 karakter agar sama persis dengan GitHub UI
           echo "commit_id=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
           echo "commit_msg=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
           echo "date=$(TZ='Asia/Jakarta' date '+%A, %d %B %Y')" >> $GITHUB_OUTPUT
@@ -107,11 +108,11 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Root_Assistant_Stable
-          path: Root_Assistant_Stable.zip
+          name: Root_Assistant_Release
+          path: Root_Assistant_Release.zip
 
-      - name: Send Telegram Notification
-        if: always()
+      - name: Send Telegram Notification (Text)
+        if: always() && !startsWith(github.ref, 'refs/tags/')
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -127,3 +128,23 @@ jobs:
             <b>🔑 Commit ID:</b> <code>${{ steps.metadata.outputs.commit_id }}</code>
             <b>📅 Tanggal:</b> ${{ steps.metadata.outputs.date }}
             <b>⏰ Waktu Selesai:</b> ${{ steps.metadata.outputs.time }}
+
+      - name: Send Telegram Notification with Zip File (Release Tag)
+        if: always() && startsWith(github.ref, 'refs/tags/')
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: Root_Assistant_Release.zip
+          format: html
+          message: |
+            <b>📦 ROOT ASSISTANT RELEASE BUILD</b>
+            
+            <b>Status:</b> ${{ steps.metadata.outputs.status_text }}
+            <b>🏷️ Tag Rilis:</b> ${{ github.ref_name }}
+            <b>📌 Topik:</b> ${{ steps.metadata.outputs.commit_msg }}
+            <b>🔑 Commit ID:</b> <code>${{ steps.metadata.outputs.commit_id }}</code>
+            <b>📅 Tanggal:</b> ${{ steps.metadata.outputs.date }}
+            <b>⏰ Waktu Selesai:</b> ${{ steps.metadata.outputs.time }}
+            
+            <i>File modul .zip siap dipasang! Silakan unduh di bawah ini 👇</i>
