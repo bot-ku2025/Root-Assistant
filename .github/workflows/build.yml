@@ -96,7 +96,10 @@ jobs:
           else
             echo "status_text=❌ Gagal (Failed)" >> $GITHUB_OUTPUT
           fi
+          
+          # Mengambil data langsung dari git lokal agar 100% akurat
           echo "commit_id=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "commit_msg=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
           echo "date=$(TZ='Asia/Jakarta' date '+%A, %d %B %Y')" >> $GITHUB_OUTPUT
           echo "time=$(TZ='Asia/Jakarta' date '+%H:%M:%S WIB')" >> $GITHUB_OUTPUT
 
@@ -118,7 +121,7 @@ jobs:
             <b>🚀 ROOT ASSISTANT BUILD UPDATE</b>
             
             <b>Status:</b> ${{ steps.metadata.outputs.status_text }}
-            <b>📌 Topik Update:</b> ${{ github.event.head_commit.message }}
+            <b>📌 Topik Update:</b> ${{ steps.metadata.outputs.commit_msg }}
             <b>🔑 Commit ID:</b> <code>${{ steps.metadata.outputs.commit_id }}</code>
             <b>📅 Tanggal:</b> ${{ steps.metadata.outputs.date }}
             <b>⏰ Waktu Selesai:</b> ${{ steps.metadata.outputs.time }}
