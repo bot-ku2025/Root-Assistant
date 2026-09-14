@@ -12,75 +12,53 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Prepare Header and Build Native NDK
+      - name: Setup Header
         run: |
           mkdir -p jni
-          cat << 'HEADER' > jni/zygisk.hpp
-#pragma once
-#include <jni.h>
-#include <stdint.h>
+          echo '#pragma once' > jni/zygisk.hpp
+          echo '#include <jni.h>' >> jni/zygisk.hpp
+          echo '#include <stdint.h>' >> jni/zygisk.hpp
+          echo 'namespace zygisk {' >> jni/zygisk.hpp
+          echo 'struct AppSpecializeArgs;' >> jni/zygisk.hpp
+          echo 'struct ServerSpecializeArgs;' >> jni/zygisk.hpp
+          echo 'class Api;' >> jni/zygisk.hpp
+          echo 'class ModuleBase {' >> jni/zygisk.hpp
+          echo 'public:' >> jni/zygisk.hpp
+          echo '    virtual void onLoad(Api *api, JNIEnv *env) {}' >> jni/zygisk.hpp
+          echo '    virtual void preAppSpecialize(AppSpecializeArgs *args) {}' >> jni/zygisk.hpp
+          echo '    virtual void postAppSpecialize(const AppSpecializeArgs *args) {}' >> jni/zygisk.hpp
+          echo '};' >> jni/zygisk.hpp
+          echo 'enum Option : uint32_t { FORCE_DENYLIST_UNMOUNT = 0, DLCLOSE_MODULE_LIBRARY = 1 };' >> jni/zygisk.hpp
+          echo 'class Api { public: virtual bool setOption(Option option) = 0; };' >> jni/zygisk.hpp
+          echo '}' >> jni/zygisk.hpp
+          echo '#define REGISTER_ZYGISK_MODULE(className) extern "C" [[gnu::visibility("default")]] void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { static className module; module.onLoad(api, env); }' >> jni/zygisk.hpp
 
-namespace zygisk {
-struct AppSpecializeArgs;
-struct ServerSpecializeArgs;
-class Api;
-
-class ModuleBase {
-public:
-    virtual void onLoad(Api *api, JNIEnv *env) {}
-    virtual void preAppSpecialize(AppSpecializeArgs *args) {}
-    virtual void postAppSpecialize(const AppSpecializeArgs *args) {}
-    virtual void preServerSpecialize(ServerSpecializeArgs *args) {}
-    virtual void postServerSpecialize(const ServerSpecializeArgs *args) {}
-};
-
-enum Option : uint32_t {
-    FORCE_DENYLIST_UNMOUNT = 0,
-    DLCLOSE_MODULE_LIBRARY = 1,
-};
-
-class Api {
-public:
-    virtual bool setOption(Option option) = 0;
-};
-}
-
-#define REGISTER_ZYGISK_MODULE(className) \
-extern "C" [[gnu::visibility("default")]] \
-void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { \
-    static className module; \
-    module.onLoad(api, env); \
-}
-HEADER
-
+      - name: Build NDK
+        run: |
           wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
           unzip -q android-ndk-r26b-linux.zip
           export ANDROID_NDK_HOME=$PWD/android-ndk-r26b
-
           if [ -d "jni" ] && [ "$(ls -A jni)" ]; then
             cd jni
             $ANDROID_NDK_HOME/ndk-build
             cd ..
           fi
 
-      - name: Create Module Package
+      - name: Pack ZIP
         run: |
           rm -f *.zip
           rm -rf build_staging
           mkdir -p build_staging/zygisk
-
           SO_FILE=$(find libs/ obj/ jni/ -name "*.so" 2>/dev/null | head -n 1)
           if [ -n "$SO_FILE" ]; then
             cp -f "$SO_FILE" build_staging/zygisk/arm64-v8a.so
           fi
-
           [ -f module.prop ] && cp -f module.prop build_staging/
           [ -f post-fs-data.sh ] && cp -f post-fs-data.sh build_staging/
           [ -f service.sh ] && cp -f service.sh build_staging/
           [ -f sepolicy.rule ] && cp -f sepolicy.rule build_staging/
           [ -f system.prop ] && cp -f system.prop build_staging/
           [ -f customize.sh ] && cp -f customize.sh build_staging/
-
           cd build_staging
           zip -r ../Root_Assistant_Stable.zip .
           cd ..
