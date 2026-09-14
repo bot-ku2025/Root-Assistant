@@ -16,8 +16,13 @@ jobs:
       - name: Build Zip
         run: |
           rm -f *.zip
-          zip -j Root_Assistant_Stable.zip module.prop post-fs-data.sh service.sh sepolicy.rule system.prop
-          zip -r Root_Assistant_Stable.zip zygisk/
+          # Buat struktur zip flat dengan mengecek ketersediaan file
+          [ -f module.prop ] && zip Root_Assistant_Stable.zip module.prop
+          [ -f post-fs-data.sh ] && zip Root_Assistant_Stable.zip post-fs-data.sh
+          [ -f service.sh ] && zip Root_Assistant_Stable.zip service.sh
+          [ -f sepolicy.rule ] && zip Root_Assistant_Stable.zip sepolicy.rule
+          [ -f system.prop ] && zip Root_Assistant_Stable.zip system.prop
+          [ -d zygisk ] && zip -r Root_Assistant_Stable.zip zygisk/
           
       - name: Upload Release
         uses: softprops/action-gh-release@v2
