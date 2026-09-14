@@ -28,11 +28,11 @@ public:
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
         if (hide_root) {
-            // Buat namespace privat agar unmount aman dan tidak bikin crash aplikasi
             if (unshare(CLONE_NEWNS) != 0) {
                 return;
             }
 
+            // Targetkan direktori adb, su, serta seluruh overlay mount partisi sistem
             std::vector<std::string> target_paths = {
                 "/data/adb", 
                 "/system/bin/su", 
@@ -41,7 +41,12 @@ public:
                 "/data/local/tmp", 
                 "/data/magisk", 
                 "/sbin/magisk", 
-                "/data/misc/apatch"
+                "/data/misc/apatch",
+                "/system",
+                "/vendor",
+                "/product",
+                "/odm",
+                "/system_ext"
             };
 
             struct stat st;
@@ -54,7 +59,7 @@ public:
             unsetenv("_REJECT_MAGISK_HIDE");
             unsetenv("MAGISK_INJECT_LOG_LEVEL");
             
-            LOGI("Isolated namespace active for UID: %d", args->uid);
+            LOGI("Mount fix isolation active for UID: %d", args->uid);
         }
     }
 
