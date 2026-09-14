@@ -26,7 +26,8 @@ jobs:
       - name: Download Zygisk API Header
         run: |
           echo "Downloading official zygisk.hpp..."
-          wget -q https://raw.githubusercontent.com/topjohnwu/Magisk/master/native/include/zygisk.hpp -O jni/zygisk.hpp
+          mkdir -p jni
+          wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
 
       - name: Capture Git Info
         run: |
