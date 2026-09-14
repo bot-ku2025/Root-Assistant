@@ -1,4 +1,0 @@
-ro.debuggable=0
-ro.secure=1
-ro.build.type=user
-ro.build.tags=release-keys

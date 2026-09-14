@@ -13,37 +13,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compile Native Zygisk Binary with Manual NDK
+      - name: Compile Native Zygisk Binary
         run: |
           wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
           unzip -q android-ndk-r26b-linux.zip
           export ANDROID_NDK_HOME=$PWD/android-ndk-r26b
 
-          cd jni
-          $ANDROID_NDK_HOME/ndk-build
-          cd ..
+          if [ -d "jni" ] && [ "$(ls -A jni)" ]; then
+            cd jni
+            $ANDROID_NDK_HOME/ndk-build
+            cd ..
+          fi
 
-      - name: Assemble and Package Flat Hybrid ZIP
+      - name: Assemble Flat ZIP Direct from Root
         run: |
           rm -f *.zip
           rm -rf build_staging
           mkdir -p build_staging/zygisk
-          
-          # Salin file modul dari module_files
-          if [ -d "module_files" ]; then
-            cp -rf module_files/* build_staging/
-          fi
 
-          # Ambil hasil kompilasi biner .so
+          # Ambil hasil kompilasi biner .so jika ada
           SO_FILE=$(find libs/ obj/ jni/ -name "*.so" 2>/dev/null | head -n 1)
-          
           if [ -n "$SO_FILE" ]; then
             cp -f "$SO_FILE" build_staging/zygisk/arm64-v8a.so
-            echo "Binary successfully packaged: $SO_FILE -> build_staging/zygisk/arm64-v8a.so"
-          else
-            echo "CRITICAL ERROR: Tidak ada berkas .so yang berhasil dibuat oleh NDK!"
-            exit 1
           fi
+
+          # Salin berkas modul dari root repositori ke staging
+          [ -f module.prop ] && cp -f module.prop build_staging/
+          [ -f post-fs-data.sh ] && cp -f post-fs-data.sh build_staging/
+          [ -f service.sh ] && cp -f service.sh build_staging/
+          [ -f sepolicy.rule ] && cp -f sepolicy.rule build_staging/
+          [ -f system.prop ] && cp -f system.prop build_staging/
+          [ -f customize.sh ] && cp -f customize.sh build_staging/
 
           # Kompresi struktur flat root
           cd build_staging

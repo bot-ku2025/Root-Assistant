@@ -1,7 +1,0 @@
-allow init system_file file { execute_no_trans mounton }
-allow init vendor_file file { execute_no_trans mounton }
-dontaudit init kernel process { call }
-dontaudit zygote zygote process { ptrace }
-dontaudit untrusted_app* untrusted_app* process { ptrace }
-dontaudit untrusted_app* sysfs_net dir { search read }
-dontaudit untrusted_app* su_exec file { execute read open }
