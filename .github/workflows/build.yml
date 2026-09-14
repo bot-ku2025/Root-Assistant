@@ -13,31 +13,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Clean Flat ZIP
+      - name: Build Flat ZIP with Repo Binary
         run: |
           rm -f *.zip
           
-          # Siapkan direktori zygisk dan cari file .so yang sudah ada di repo Anda
+          # Buat folder zygisk bersih
           rm -rf zygisk
           mkdir -p zygisk
           
-          # Cari file arm64-v8a.so di seluruh folder repo dan pindahkan ke folder zygisk/
-          SO_FILE=$(find . -name "arm64-v8a.so" | head -n 1)
-          if [ -n "$SO_FILE" ]; then
-            cp "$SO_FILE" zygisk/
+          # Cari otomatis file arm64-v8a.so di manapun letaknya di dalam repo Anda
+          FOUND_SO=$(find . -name "arm64-v8a.so" | head -n 1)
+          
+          if [ -n "$FOUND_SO" ]; then
+            echo "Found binary at: $FOUND_SO"
+            cp "$FOUND_SO" zygisk/arm64-v8a.so
           else
-            echo "Error: arm64-v8a.so tidak ditemukan di repo!"
+            echo "Error: Biner arm64-v8a.so tidak ditemukan di dalam repo!"
             exit 1
           fi
 
-          # Kemas file root secara flat (tanpa folder pembungkus)
-          [ -f module.prop ] && zip -j Root_Assistant_Stable.zip module.prop
-          [ -f post-fs-data.sh ] && zip -j Root_Assistant_Stable.zip post-fs-data.sh
+          # Kompres ZIP secara flat root mutlak (tanpa folder pembungkus)
+          zip -j Root_Assistant_Stable.zip module.prop post-fs-data.sh
           [ -f service.sh ] && zip -j Root_Assistant_Stable.zip service.sh || true
           [ -f sepolicy.rule ] && zip -j Root_Assistant_Stable.zip sepolicy.rule || true
           [ -f system.prop ] && zip -j Root_Assistant_Stable.zip system.prop || true
-          
-          # Masukkan folder zygisk beserta biner .so di dalamnya secara benar
           zip -r Root_Assistant_Stable.zip zygisk/
 
       - name: Upload Release
