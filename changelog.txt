@@ -1,0 +1,4 @@
+v1.7-Phase7 (Build 109):
+- Update module metadata and installer scripts for v1.7-Phase7
+- Enhanced terminal UI layout and automated root manager / SuSFS status detection
+- Optimized hybrid integration framework
