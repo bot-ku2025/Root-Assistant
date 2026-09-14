@@ -17,20 +17,22 @@ jobs:
         run: |
           rm -f *.zip
           
-          # Cari & kumpulkan file utama ke root direktori build
-          find . -name "module.prop" -exec cp {} ./ \;
-          find . -name "post-fs-data.sh" -exec cp {} ./ \;
-          find . -name "service.sh" -exec cp {} ./ \;
-          find . -name "sepolicy.rule" -exec cp {} ./ \;
-          find . -name "system.prop" -exec cp {} ./ \;
+          # Ambil semua file teks konfigurasi utama
+          find . -maxdepth 2 -name "module.prop" -exec cp {} ./ \;
+          find . -maxdepth 2 -name "post-fs-data.sh" -exec cp {} ./ \;
+          find . -maxdepth 2 -name "service.sh" -exec cp {} ./ \;
+          find . -maxdepth 2 -name "sepolicy.rule" -exec cp {} ./ \;
+          find . -maxdepth 2 -name "system.prop" -exec cp {} ./ \;
           
-          # Jika folder zygisk ada di sub-folder, tarik ke root
-          if [ ! -d "zygisk" ]; then
-            ZYGISK_PATH=$(find . -type d -name "zygisk" | head -n 1)
-            [ -n "$ZYGISK_PATH" ] && cp -r "$ZYGISK_PATH" ./
+          # Ambil folder zygisk beserta isinya (.so)
+          rm -rf zygisk
+          mkdir -p zygisk
+          ZYG_FILE=$(find . -name "arm64-v8a.so" | head -n 1)
+          if [ -n "$ZYG_FILE" ]; then
+            cp "$ZYG_FILE" zygisk/
           fi
 
-          # Buat ZIP secara langsung (flat)
+          # Buat ZIP flat sempurna
           zip -j Root_Assistant_Stable.zip module.prop post-fs-data.sh
           [ -f service.sh ] && zip -j Root_Assistant_Stable.zip service.sh || true
           [ -f sepolicy.rule ] && zip -j Root_Assistant_Stable.zip sepolicy.rule || true
