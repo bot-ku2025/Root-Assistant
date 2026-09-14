@@ -65,12 +65,22 @@ jobs:
             echo "build_status=SUCCESS" >> $GITHUB_ENV
           fi
 
-      - name: Package Module (ZIP)
+      - name: Package Module (Zygisk Standard Structure)
         if: env.build_status == 'SUCCESS'
         run: |
           mkdir -p build_output
+          mkdir -p zygisk
+          
+          # Pindahkan dan sesuaikan nama .so agar terbaca oleh Zygisk daemon
+          if [ -f obj/local/arm64-v8a/librootassistant.so ]; then
+            cp obj/local/arm64-v8a/librootassistant.so zygisk/arm64-v8a.so
+          elif [ -f libs/arm64-v8a/*.so ]; then
+            cp libs/arm64-v8a/*.so zygisk/arm64-v8a.so
+          fi
+          
           ZIP_NAME="Root-Assistant-${{ env.VERSION_TAG }}.zip"
-          zip -r "build_output/$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule libs/
+          # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
+          zip -r "build_output/$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule zygisk/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
       - name: Send Telegram Notification (Success)
@@ -83,7 +93,7 @@ jobs:
           message: |
             🚀 ROOT ASSISTANT BUILD UPDATE
 
-            Status: ✅ Sukses & Released
+            Status: ✅ Sukses & Released (Zygisk Standard Fixed)
             📦 File: *Root-Assistant-${{ env.VERSION_TAG }}*
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
