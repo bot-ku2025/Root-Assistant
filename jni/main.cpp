@@ -2,10 +2,12 @@
 #include <android/log.h>
 #include <unistd.h>
 #include <sys/system_properties.h>
+#include <sys/stat.h>
 #include <cstring>
 
 #define LOG_TAG "RootAssistant"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
 namespace zygisk {
@@ -51,12 +53,18 @@ struct Api {
 };
 } // namespace zygisk
 
-class RootAssistantPhase4 : public zygisk::ModuleBase {
+class RootAssistantPhase4_5 : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
         this->env = env;
-        LOGI("RootAssistant Phase 4 (Target Filtering) loaded successfully.");
+        
+        if (!validateEnvironment()) {
+            LOGE("[ABORT] Unsupported environment detected! Root-Assistant requires ResuKisu+SuSFS or valid KSU Next.");
+            return;
+        }
+        
+        LOGI("RootAssistant Phase 4.5 (Environment Gatekeeper) loaded successfully.");
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
@@ -65,9 +73,8 @@ public:
             if (nice_name && env) {
                 const char *name = env->GetStringUTFChars(nice_name, nullptr);
                 if (name) {
-                    // Filter: Menyaring proses aplikasi di luar system/android agar mudah dipantau
                     if (strstr(name, "com.android") == nullptr) {
-                        LOGD("Filtered Target App -> %s", name);
+                        LOGD("Verified Target App -> %s", name);
                     }
                     env->ReleaseStringUTFChars(nice_name, name);
                 }
@@ -76,16 +83,40 @@ public:
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
-        LOGI("System server specialization secured.");
+        LOGI("System server specialization secured under verified environment.");
     }
 
 private:
+    bool validateEnvironment() {
+        bool has_susfs = false;
+        bool has_ksu_derivative = false;
+
+        struct stat buffer;
+        if (stat("/sys/kernel/susfs", &buffer) == 0 || stat("/dev/susfs", &buffer) == 0) {
+            has_susfs = true;
+            LOGI("[CHECK] SuSFS interface detected (ResuKisu/SuSFS Priority Active).");
+        }
+
+        char prop_buf[PROP_VALUE_MAX];
+        __system_property_get("ro.kernel.su", prop_buf);
+        if (access("/dev/ksud", F_OK) == 0 || strlen(prop_buf) > 0) {
+            has_ksu_derivative = true;
+            LOGI("[CHECK] KernelSU/KSU Next derivative detected.");
+        }
+
+        if (has_susfs || has_ksu_derivative) {
+            return true;
+        }
+
+        return false;
+    }
+
     zygisk::Api *api = nullptr;
     JNIEnv *env = nullptr;
 };
 
 static void register_module(zygisk::Api *api) {
-    zygisk::ModuleBase *module = new RootAssistantPhase4();
+    zygisk::ModuleBase *module = new RootAssistantPhase4_5();
     api->registerModule(module);
 }
 
