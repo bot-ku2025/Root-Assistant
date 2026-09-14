@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/system_properties.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <cstring>
 
 #define LOG_TAG "RootAssistant"
@@ -40,7 +41,7 @@ public:
     virtual void preAppSpecialize(AppSpecializeArgs *args) {}
     virtual void postAppSpecialize(const AppSpecializeArgs *args) {}
     virtual void preServerSpecialize(ServerSpecializeArgs *args) {}
-    virtual void postServerSpecialize(const ServerSpecializeArgs *args) {}
+    virtual void postServerSpecialize(ServerSpecializeArgs *args) {}
 };
 struct Api {
     enum Option { PATCH_DLOPEN = 0, DLCLOSE_SKIP_FINI = 1 };
@@ -49,22 +50,36 @@ struct Api {
     virtual void setOption(Option opt) = 0;
     virtual void *connectCompanion() = 0;
     virtual void registerModule(ModuleBase *module) = 0;
+    virtual void registerCompanion(void (*handler)(int)) = 0;
     static void init(Api *api, JNIEnv *env) {}
 };
 } // namespace zygisk
 
-class RootAssistantPhase4_5 : public zygisk::ModuleBase {
+// Fungsi pipa pengiriman data terhubung ke Companion daemon
+static void sendDataToCompanion(zygisk::Api *api, const char *package_name) {
+    if (!api || !package_name) return;
+    int fd = api->connectCompanion();
+    if (fd >= 0) {
+        uint32_t len = strlen(package_name);
+        write(fd, &len, sizeof(len));
+        write(fd, package_name, len);
+        close(fd);
+    }
+}
+
+class RootAssistantPhase5Interconnected : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
         this->env = env;
         
+        // 1. Gatekeeper Lingkungan (ResuKisu + SuSFS / KSU Next) sebagai gerbang mutlak
         if (!validateEnvironment()) {
             LOGE("[ABORT] Unsupported environment! Root-Assistant requires ResuKisu+SuSFS or valid KSU Next.");
             return;
         }
         
-        LOGI("RootAssistant Phase 4.5 (Environment Gatekeeper) loaded successfully.");
+        LOGI("RootAssistant Phase 5 (Interconnected IPC Pipeline) loaded successfully.");
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
@@ -73,8 +88,12 @@ public:
             if (nice_name && env) {
                 const char *name = env->GetStringUTFChars(nice_name, nullptr);
                 if (name) {
+                    // 2. Filter Target Aplikasi menyalurkan data langsung ke pipa IPC
                     if (strstr(name, "com.android") == nullptr) {
-                        LOGD("Verified Target App -> %s", name);
+                        LOGD("Pipeline Target App Detected -> %s", name);
+                        
+                        // 3. Mengumpankan nama paket langsung ke daemon companion secara real-time
+                        sendDataToCompanion(api, name);
                     }
                     env->ReleaseStringUTFChars(nice_name, name);
                 }
@@ -83,7 +102,7 @@ public:
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
-        LOGI("System server specialization secured under verified environment.");
+        LOGI("System server specialization secured under interconnected pipeline.");
     }
 
 private:
@@ -111,8 +130,21 @@ private:
     JNIEnv *env = nullptr;
 };
 
+// 4. Handler Companion Daemon yang menerima data terhubung dari pipa aplikasi
+static void companion_handler(int socket_fd) {
+    uint32_t len = 0;
+    if (read(socket_fd, &len, sizeof(len)) == sizeof(len) && len > 0 && len < 256) {
+        char package_name[256];
+        memset(package_name, 0, sizeof(package_name));
+        if (read(socket_fd, package_name, len) > 0) {
+            LOGI("[DAEMON PIPELINE] Successfully received target package through IPC: %s", package_name);
+        }
+    }
+    close(socket_fd);
+}
+
 static void register_module(zygisk::Api *api) {
-    zygisk::ModuleBase *module = new RootAssistantPhase4_5();
+    zygisk::ModuleBase *module = new RootAssistantPhase5Interconnected();
     api->registerModule(module);
 }
 
@@ -120,6 +152,7 @@ extern "C" {
 __attribute__((visibility("default"))) __attribute__((used))
 void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) {
     zygisk::Api::init(api, env);
+    api->registerCompanion(companion_handler);
     register_module(api);
 }
 }
