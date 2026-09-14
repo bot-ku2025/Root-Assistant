@@ -8,12 +8,12 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-class RootAssistantPhase3 : public zygisk::ModuleBase {
+class RootAssistantModule : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
         this->env = env;
-        LOGI("RootAssistant Phase 3 loaded successfully.");
+        LOGI("RootAssistant loaded successfully.");
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
@@ -22,7 +22,7 @@ public:
             if (nice_name && env) {
                 const char *name = env->GetStringUTFChars(nice_name, nullptr);
                 if (name) {
-                    LOGD("Target Application Detected -> Package: %s", name);
+                    LOGD("Target App -> %s", name);
                     env->ReleaseStringUTFChars(nice_name, name);
                 }
             }
@@ -33,7 +33,7 @@ public:
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
-        LOGI("System server specialization secured.");
+        LOGI("System server specialized.");
     }
 
 private:
@@ -41,4 +41,17 @@ private:
     JNIEnv *env = nullptr;
 };
 
-REGISTER_ZYGISK_MODULE(RootAssistantPhase3)
+// Pendaftaran entry point Zygisk yang kompatibel dengan standar header modern
+static void register_module(zygisk::Api *api) {
+    zygisk::ModuleBase *module = new RootAssistantModule();
+    api->registerModule(module);
+}
+
+// Ekspor fungsi entry point Zygisk secara eksplisit
+extern "C" {
+__attribute__((visibility("default"))) __attribute__((used))
+void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) {
+    zygisk::Api::init(api, env);
+    register_module(api);
+}
+}
