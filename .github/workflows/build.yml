@@ -77,12 +77,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Send Telegram Notification (Success)
+      - name: Send Telegram Notification (Success with File)
         if: env.build_status == 'SUCCESS'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: build_output/Root_Assistant_Release.zip
           message: |
             🚀 ROOT ASSISTANT BUILD UPDATE
 
