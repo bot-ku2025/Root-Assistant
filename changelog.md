@@ -1,2 +1,2 @@
-Hybrid Update: Add SusFS auto-detection
+Cleanup: Fix module structure and update ksu_susfs syntax
 
