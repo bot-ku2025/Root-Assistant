@@ -1,6 +1,6 @@
-id=root_assistant
+id=root-assistant
 name=Root Assistant
-version=v8.0
-versionCode=800
-author=bot-ku2025
-description=Hybrid Kernel-Level & Zygisk Assistant Module
+version=v1.0.0
+versionCode=1
+author=M dimas Ridho
+description=Modul Zygisk otomatis untuk pengelolaan sistem dan keamanan perangkat.
