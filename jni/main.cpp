@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <cstring>
 #include <dlfcn.h>
+#include <errno.h>
 
 #define LOG_TAG "RootAssistant"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -69,12 +70,11 @@ static void sendDataToCompanion(zygisk::Api *api, const char *package_name) {
     }
 }
 
-// Hook handler contoh untuk fungsi open/access (Phase 6: Runtime API Evasion)
+// Hook handler untuk fungsi open (Phase 6: Runtime API Evasion)
 static int (*orig_open)(const char *pathname, int flags, mode_t mode) = nullptr;
 
 static int hooked_open(const char *pathname, int flags, mode_t mode) {
     if (pathname) {
-        // Contoh intervensi penyembunyian jalur berkas biner root umum
         if (strstr(pathname, "/sbin/su") || strstr(pathname, "/system/bin/su") || strstr(pathname, "/system/xbin/su")) {
             LOGD("[PLT HOOK] Blocked access attempt to root binary: %s", pathname);
             errno = ENOENT;
@@ -93,15 +93,12 @@ public:
         this->api = api;
         this->env = env;
         
-        // 1. Gatekeeper Lingkungan (ResuKisu + SuSFS / KSU Next)
         if (!validateEnvironment()) {
             LOGE("[ABORT] Unsupported environment! Root-Assistant requires ResuKisu+SuSFS or valid KSU Next.");
             return;
         }
         
-        // Aktifkan patch dlopen agar hooking mencakup pustaka dinamis aplikasi
         api->setOption(zygisk::Api::PATCH_DLOPEN);
-        
         LOGI("RootAssistant Phase 6 (PLT Hooking & Runtime Evasion) loaded successfully.");
     }
 
@@ -111,12 +108,10 @@ public:
             if (nice_name && env) {
                 const char *name = env->GetStringUTFChars(nice_name, nullptr);
                 if (name) {
-                    // 2. Filter Target Aplikasi menyalurkan data ke pipa IPC & Hooking
                     if (strstr(name, "com.android") == nullptr) {
                         LOGD("Phase 6 Target App Secured -> %s", name);
                         sendDataToCompanion(api, name);
                         
-                        // Daftarkan PLT Hook pada target proses aplikasi
                         if (api) {
                             api->pltHookRegister(nullptr, "open", (void *)hooked_open, (void **)&orig_open);
                             api->pltHookCommit();
@@ -157,7 +152,6 @@ private:
     JNIEnv *env = nullptr;
 };
 
-// Handler Companion Daemon
 static void companion_handler(int socket_fd) {
     uint32_t len = 0;
     if (read(socket_fd, &len, sizeof(len)) == sizeof(len) && len > 0 && len < 256) {
