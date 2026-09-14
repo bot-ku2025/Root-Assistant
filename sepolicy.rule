@@ -1,2 +1,1 @@
-# Tambahkan aturan SELinux kustom di sini jika modul membutuhkan izin khusus
-# Contoh: allow system_server self capability sys_admin;
+# Aturan SELinux kustom untuk modul zygisk (v1.7-Phase7)

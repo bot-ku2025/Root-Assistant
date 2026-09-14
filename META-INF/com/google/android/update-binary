@@ -1,0 +1,33 @@
+#!/sbin/sh
+################################################################################
+# Magisk Module Installer
+# Amended from the original updater-script by osm0sis
+################################################################################
+
+umask 022
+
+if [ -f /data/adb/magisk/util_functions.sh ]; then
+  . /data/adb/magisk/util_functions.sh
+elif [ -f /data/adb/ksu/util_functions.sh ]; then
+  . /data/adb/ksu/util_functions.sh
+else
+  OUTFD=$2
+  ui_print() { echo "$1"; }
+  abort() { ui_print "$1"; exit 1; }
+fi
+
+if [ "$ARCH" != "arm64" ] && [ "$ARCH" != "arm" ] && [ "$ARCH" != "x86" ] && [ "$ARCH" != "x64" ]; then
+  abort "Unsupported architecture: $ARCH"
+fi
+
+ui_print "- Extracting module files..."
+unzip -o "$ZIPFILE" 'customize.sh' -d "$TMPDIR" >&2
+unzip -o "$ZIPFILE" 'module.prop' -d "$TMPDIR" >&2
+unzip -o "$ZIPFILE" 'sepolicy.rule' -d "$TMPDIR" 2>/dev/null
+unzip -o "$ZIPFILE" 'zygisk/*' -d "$TMPDIR" 2>/dev/null
+
+if [ -f "$TMPDIR/customize.sh" ]; then
+  . "$TMPDIR/customize.sh"
+fi
+
+exit 0

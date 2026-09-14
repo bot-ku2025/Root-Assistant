@@ -1,6 +1,7 @@
-id=root-assistant
-name=Root Assistant
-version=v1.0.0
-versionCode=1
-author=STNK
-description=Modul Zygisk otomatis untuk pengelolaan sistem dan keamanan perangkat.
+id=root-assistant-zygisk
+name=Root-Assistant Zygisk
+version=v1.7-Phase7
+versionCode=109
+author=STNK 🔒
+description=Sistem luar kelihatan polos | Dalemnya tetap aman boss [🟢 Enabled]
+updateJson=https://raw.githubusercontent.com/bot-ku2025/Root-Assistant/main/update.json
