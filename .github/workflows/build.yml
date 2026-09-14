@@ -13,36 +13,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Zip
+      - name: Build Zip and Package Correctly
         run: |
           rm -f *.zip
           
-          # Ambil semua file teks konfigurasi utama
-          find . -maxdepth 2 -name "module.prop" -exec cp {} ./ \;
-          find . -maxdepth 2 -name "post-fs-data.sh" -exec cp {} ./ \;
-          find . -maxdepth 2 -name "service.sh" -exec cp {} ./ \;
-          find . -maxdepth 2 -name "sepolicy.rule" -exec cp {} ./ \;
-          find . -maxdepth 2 -name "system.prop" -exec cp {} ./ \;
-          
-          # Ambil folder zygisk beserta isinya (.so)
+          # 1. Pastikan folder zygisk dan file .so ada di tempatnya
           rm -rf zygisk
           mkdir -p zygisk
-          ZYG_FILE=$(find . -name "arm64-v8a.so" | head -n 1)
-          if [ -n "$ZYG_FILE" ]; then
-            cp "$ZYG_FILE" zygisk/
+          find . -name "arm64-v8a.so" -exec cp {} zygisk/ \;
+          
+          # 2. Validasi biner tidak boleh kosong
+          if [ ! -f "zygisk/arm64-v8a.so" ]; then
+            echo "Error: arm64-v8a.so not found!"
+            exit 1
           fi
 
-          # Buat ZIP flat sempurna
+          # 3. Buat ZIP secara flat root mutlak
           zip -j Root_Assistant_Stable.zip module.prop post-fs-data.sh
           [ -f service.sh ] && zip -j Root_Assistant_Stable.zip service.sh || true
           [ -f sepolicy.rule ] && zip -j Root_Assistant_Stable.zip sepolicy.rule || true
           [ -f system.prop ] && zip -j Root_Assistant_Stable.zip system.prop || true
-          [ -d zygisk ] && zip -r Root_Assistant_Stable.zip zygisk/ || true
+          zip -r Root_Assistant_Stable.zip zygisk/
 
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v8.0
           files: Root_Assistant_Stable.zip
+          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
