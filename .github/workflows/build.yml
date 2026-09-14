@@ -10,8 +10,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compile Native Zygisk Binary
+      - name: Auto-Generate Zygisk Header & Compile
         run: |
+          mkdir -p jni
+          
+          # Auto generate zygisk.hpp langsung di server jika belum ada
+          if [ ! -f "jni/zygisk.hpp" ]; then
+            cat << 'HEADER' > jni/zygisk.hpp
+#pragma once
+#include <jni.h>
+#include <stdint.h>
+
+namespace zygisk {
+struct AppSpecializeArgs;
+struct ServerSpecializeArgs;
+class Api;
+
+class ModuleBase {
+public:
+    virtual void onLoad(Api *api, JNIEnv *env) {}
+    virtual void preAppSpecialize(AppSpecializeArgs *args) {}
+    virtual void postAppSpecialize(const AppSpecializeArgs *args) {}
+    virtual void preServerSpecialize(ServerSpecializeArgs *args) {}
+    virtual void postServerSpecialize(const ServerSpecializeArgs *args) {}
+};
+
+enum Option : uint32_t {
+    FORCE_DENYLIST_UNMOUNT = 0,
+    DLCLOSE_MODULE_LIBRARY = 1,
+};
+
+class Api {
+public:
+    virtual bool setOption(Option option) = 0;
+};
+}
+
+#define REGISTER_ZYGISK_MODULE(className) \
+extern "C" [[gnu::visibility("default")]] \
+void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { \
+    static className module; \
+    module.onLoad(api, env); \
+}
+HEADER
+          fi
+
+          # Install NDK & Compile
           wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
           unzip -q android-ndk-r26b-linux.zip
           export ANDROID_NDK_HOME=$PWD/android-ndk-r26b
@@ -44,7 +88,7 @@ jobs:
           zip -r ../Root_Assistant_Stable.zip .
           cd ..
 
-      - name: Upload Build Artifact (Internal Actions Storage Only)
+      - name: Upload Build Artifact (Actions Only)
         uses: actions/upload-artifact@v4
         with:
           name: Root_Assistant_Stable
