@@ -1,150 +1,87 @@
-name: Build Hybrid Module
+name: Build Zygisk Module
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     tags:
       - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Setup Header and Compile C++ NDK
-        run: |
-          mkdir -p jni
-          cat << 'HEADER' > jni/zygisk.hpp
-          #pragma once
-          #include <jni.h>
-          #include <stdint.h>
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v3
+      with:
+        ndk-version: r26b
+        add-to-path: true
 
-          namespace zygisk {
-          struct AppSpecializeArgs;
-          struct ServerSpecializeArgs;
-          class Api;
+    - name: Download Zygisk Header
+      run: |
+        mkdir -p jni
+        curl -L -o jni/zygisk.hpp https://raw.githubusercontent.com/topjohnwu/Magisk/master/native/jni/zygisk.hpp
 
-          class ModuleBase {
-          public:
-              virtual void onLoad(Api *api, JNIEnv *env) {}
-              virtual void preAppSpecialize(AppSpecializeArgs *args) {}
-              virtual void postAppSpecialize(const AppSpecializeArgs *args) {}
-              virtual void preServerSpecialize(ServerSpecializeArgs *args) {}
-              virtual void postServerSpecialize(const ServerSpecializeArgs *args) {}
-          };
+    - name: Build with NDK & Capture Error Log
+      id: compile
+      continue-on-error: true
+      run: |
+        cd jni
+        ndk-build 2> build_error.log
+        cat build_error.log
 
-          enum Option : uint32_t {
-              FORCE_DENYLIST_UNMOUNT = 0,
-              DLCLOSE_MODULE_LIBRARY = 1,
-          };
+    - name: Check Build Status
+      id: check_status
+      run: |
+        if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
+          echo "build_status=FAILURE" >> $GITHUB_ENV
+          ERROR_MSG=$(tail -n 15 jni/build_error.log | tr '\n' ' ')
+          echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
+          exit 1
+        else
+          echo "build_status=SUCCESS" >> $GITHUB_ENV
+        fi
 
-          class Api {
-          public:
-              virtual bool setOption(Option option) = 0;
-          };
-          }
+    - name: Package Module (ZIP)
+      if: env.build_status == 'SUCCESS'
+      run: |
+        mkdir -p build_output
+        zip -r build_output/Root_Assistant_Release.zip module.prop post-fs-data.sh service.sh sepolicy.rule libs/
 
-          #define REGISTER_ZYGISK_MODULE(className) \
-          extern "C" [[gnu::visibility("default")]] \
-          void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { \
-              static className module; \
-              module.onLoad(api, env); \
-          }
-          HEADER
+    - name: Send Telegram Notification (Success)
+      if: env.build_status == 'SUCCESS'
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          🚀 ROOT ASSISTANT BUILD UPDATE
 
-          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
-          unzip -q android-ndk-r26b-linux.zip
-          export ANDROID_NDK_HOME=$PWD/android-ndk-r26b
+          Status: ✅ Sukses (Release Ready)
+          📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+          📌 Topik Update: ${{ github.event.head_commit.message }}
+          🌿 Branch: ${{ github.ref_name }}
+          🔑 Commit ID: ${{ github.sha }}
+          📅 Tanggal: $(TZ=Asia/Jakarta date '+%A, %d %B %Y')
+          ⏰ Waktu Selesai: $(TZ=Asia/Jakarta date '+%H:%M:%S') WIB
 
-          if [ -d "jni" ] && [ "$(ls -A jni)" ]; then
-            cd jni
-            $ANDROID_NDK_HOME/ndk-build
-            cd ..
-          fi
+    - name: Send Telegram Notification (Failure with Error Log)
+      if: env.build_status == 'FAILURE'
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          ❌ ROOT ASSISTANT BUILD FAILED
 
-      - name: Create Zip Artifact
-        run: |
-          rm -f *.zip
-          rm -rf build_staging
-          mkdir -p build_staging/zygisk
-
-          SO_FILE=$(find libs/ obj/ jni/ -name "*.so" 2>/dev/null | head -n 1)
-          if [ -n "$SO_FILE" ]; then
-            cp -f "$SO_FILE" build_staging/zygisk/arm64-v8a.so
-          fi
-
-          [ -f module.prop ] && cp -f module.prop build_staging/
-          [ -f post-fs-data.sh ] && cp -f post-fs-data.sh build_staging/
-          [ -f service.sh ] && cp -f service.sh build_staging/
-          [ -f sepolicy.rule ] && cp -f sepolicy.rule build_staging/
-          [ -f system.prop ] && cp -f system.prop build_staging/
-          [ -f customize.sh ] && cp -f customize.sh build_staging/
-
-          cd build_staging
-          zip -r ../Root_Assistant_Release.zip .
-          cd ..
-
-      - name: Prepare Build Metadata
-        if: always()
-        id: metadata
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "status_text=✅ Sukses (Release Ready)" >> $GITHUB_OUTPUT
-          else
-            echo "status_text=❌ Gagal (Failed)" >> $GITHUB_OUTPUT
-          fi
+          Status: ✅ Gagal Kompilasi (Error Detected)
+          📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+          📌 Topik Update: ${{ github.event.head_commit.message }}
           
-          echo "commit_id=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
-          echo "commit_msg=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
-          echo "date=$(TZ='Asia/Jakarta' date '+%A, %d %B %Y')" >> $GITHUB_OUTPUT
-          echo "time=$(TZ='Asia/Jakarta' date '+%H:%M:%S WIB')" >> $GITHUB_OUTPUT
+          🔍 Detail Error Compiler:
+          ${{ env.error_details }}
 
-      - name: Save Artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Root_Assistant_Release
-          path: Root_Assistant_Release.zip
-
-      - name: Send Telegram Notification (Text)
-        if: always() && !startsWith(github.ref, 'refs/tags/')
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          format: html
-          message: |
-            <b>🚀 ROOT ASSISTANT BUILD UPDATE</b>
-            
-            <b>Status:</b> ${{ steps.metadata.outputs.status_text }}
-            <b>📦 Build Run:</b> Build Hybrid Module #${{ github.run_number }}
-            <b>📌 Topik Update:</b> ${{ steps.metadata.outputs.commit_msg }}
-            <b>🌿 Branch:</b> ${{ github.ref_name }}
-            <b>🔑 Commit ID:</b> <code>${{ steps.metadata.outputs.commit_id }}</code>
-            <b>📅 Tanggal:</b> ${{ steps.metadata.outputs.date }}
-            <b>⏰ Waktu Selesai:</b> ${{ steps.metadata.outputs.time }}
-
-      - name: Send Telegram Notification with Zip File (Release Tag)
-        if: always() && startsWith(github.ref, 'refs/tags/')
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          document: Root_Assistant_Release.zip
-          format: html
-          message: |
-            <b>📦 ROOT ASSISTANT RELEASE BUILD</b>
-            
-            <b>Status:</b> ${{ steps.metadata.outputs.status_text }}
-            <b>🏷️ Tag Rilis:</b> ${{ github.ref_name }}
-            <b>📌 Topik:</b> ${{ steps.metadata.outputs.commit_msg }}
-            <b>🔑 Commit ID:</b> <code>${{ steps.metadata.outputs.commit_id }}</code>
-            <b>📅 Tanggal:</b> ${{ steps.metadata.outputs.date }}
-            <b>⏰ Waktu Selesai:</b> ${{ steps.metadata.outputs.time }}
-            
-            <i>File modul .zip siap dipasang! Silakan unduh di bawah ini 👇</i>
+          ⏰ Waktu Gagal: $(TZ=Asia/Jakarta date '+%H:%M:%S') WIB
