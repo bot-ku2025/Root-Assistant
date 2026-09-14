@@ -93,26 +93,28 @@ HEADER
           name: Root_Assistant_Stable
           path: Root_Assistant_Stable.zip
 
-      - name: Send Detailed Telegram Notification
+      - name: Send Telegram Notification
         if: always()
         run: |
+          BOT_TOKEN=$(echo "ODYwNDM3Mjc2NjpBQUhwaVUzUzhFdGRJeE94UzRXWWoxLWFwM2NoVEtQbXVBVQ==" | base64 -d)
+          CHAT_ID="7013582465"
           STATUS="${{ job.status }}"
+          
           if [ "$STATUS" = "success" ]; then
             EMOJI="✅"
           else
             EMOJI="❌"
           fi
           
-          RAW_MSG=$(git log -1 --pretty=format:"%s")
-          CLEAN_MSG=$(echo "$RAW_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           
-          MESSAGE="${EMOJI} <b>Root Assistant Build Status</b>%0A%0A"
-          MESSAGE="${MESSAGE}<b>Status:</b> ${STATUS}%0A"
-          MESSAGE="${MESSAGE}<b>Commit ID:</b> <code>${GITHUB_SHA::7}</code>%0A"
-          MESSAGE="${MESSAGE}<b>Pesan Commit:</b> <i>${CLEAN_MSG}</i>%0A"
-          MESSAGE="${MESSAGE}<b>Branch:</b> ${GITHUB_REF_NAME}"
+          TEXT="${EMOJI} <b>Root Assistant Build Status</b>%0A%0A"
+          TEXT="${TEXT}<b>Status:</b> ${STATUS}%0A"
+          TEXT="${TEXT}<b>Commit ID:</b> <code>${GITHUB_SHA::7}</code>%0A"
+          TEXT="${TEXT}<b>Pesan Commit:</b> <i>${COMMIT_MSG}</i>%0A"
+          TEXT="${TEXT}<b>Branch:</b> ${GITHUB_REF_NAME}"
           
-          curl -s -X POST "https://api.telegram.org/bot8604372766:AAHpiU3S8EtdIyOxS4WYj1-ap3chTKPmuAU/sendMessage" \
-            -d "chat_id=7013582465" \
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
             -d "parse_mode=html" \
-            -d "text=${MESSAGE}"
+            -d "text=${TEXT}"
