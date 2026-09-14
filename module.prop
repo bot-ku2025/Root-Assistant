@@ -1,7 +1,7 @@
 id=root-assistant-zygisk
 name=Root-Assistant Zygisk
-version=v3.1-Ultimate
-versionCode=310
+version=v3.2-Stable
+versionCode=320
 author=STNK 🔒
 description=Universal Root Hiding Engine (Hybrid Shamiko + Zygisk Assistant)
 updateJson=https://raw.githubusercontent.com/bot-ku2025/Root-Assistant/main/update.json
