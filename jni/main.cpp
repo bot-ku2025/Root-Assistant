@@ -17,19 +17,19 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Mengekstrak nama paket aplikasi secara aman dari argumen Zygisk jika tersedia
-        // Menggunakan pointer aman untuk mencegah crash pada berbagai versi Android
         if (args && args->nice_name) {
-            const char *nice_name = env->GetStringUTFChars(*args->nice_name, nullptr);
-            if (nice_name) {
-                LOGD("Target Application Detected -> Package: %s", nice_name);
-                env->ReleaseStringUTFChars(*args->nice_name, nice_name);
+            jstring nice_name = *args->nice_name;
+            if (nice_name && env) {
+                const char *name = env->GetStringUTFChars(nice_name, nullptr);
+                if (name) {
+                    LOGD("Target Application Detected -> Package: %s", name);
+                    env->ReleaseStringUTFChars(nice_name, name);
+                }
             }
         }
     }
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
-        // Ruang eksekusi pasca-spesialisasi aplikasi
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
