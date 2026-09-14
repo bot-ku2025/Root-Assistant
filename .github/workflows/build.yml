@@ -80,7 +80,7 @@ jobs:
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             🌿 Branch: ${{ env.BRANCH_NAME }}
-            🔑 Commit ID: ${{ github.sha }}
+            🔑 Commit ID: ${{ env.COMMIT_SHA }}
             📅 Tanggal: ${{ env.BUILD_DATE }}
             ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
 
