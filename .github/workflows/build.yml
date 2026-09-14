@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Header and Compile C++
+      - name: Setup Header and Compile C++ NDK
         run: |
           mkdir -p jni
           cat << 'HEADER' > jni/zygisk.hpp
@@ -90,3 +90,23 @@ HEADER
         with:
           name: Root_Assistant_Stable
           path: Root_Assistant_Stable.zip
+
+      - name: Send Telegram Notification
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+          else
+            EMOJI="❌"
+          fi
+          
+          MESSAGE="${EMOJI} <b>Root Assistant Build Status</b>%0A%0A"
+          MESSAGE="${MESSAGE}<b>Status:</b> ${STATUS}%0A"
+          MESSAGE="${MESSAGE}<b>Commit:</b> <code>${GITHUB_SHA::7}</code>%0A"
+          MESSAGE="${MESSAGE}<b>Branch:</b> ${GITHUB_REF_NAME}"
+          
+          curl -s -X POST "https://api.telegram.org/bot8604372766:AAHpiU3S8EtdIyOxS4WYj1-ap3chTKPmuAU/sendMessage" \
+            -d "chat_id=7013582465" \
+            -d "parse_mode=html" \
+            -d "text=${MESSAGE}"
