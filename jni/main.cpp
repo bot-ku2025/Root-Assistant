@@ -4,6 +4,7 @@
 #include <sys/system_properties.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <stdint.h>
 #include <cstring>
 
 #define LOG_TAG "RootAssistant"
@@ -55,10 +56,10 @@ struct Api {
 };
 } // namespace zygisk
 
-// Fungsi pipa pengiriman data terhubung ke Companion daemon
+// Fungsi pipa pengiriman data terhubung ke Companion daemon (menggunakan casting void* ke int)
 static void sendDataToCompanion(zygisk::Api *api, const char *package_name) {
     if (!api || !package_name) return;
-    int fd = api->connectCompanion();
+    int fd = (int)(intptr_t)api->connectCompanion();
     if (fd >= 0) {
         uint32_t len = strlen(package_name);
         write(fd, &len, sizeof(len));
