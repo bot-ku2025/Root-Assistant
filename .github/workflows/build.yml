@@ -91,17 +91,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Send Telegram Notification (Success Text Only)
+      - name: Send Telegram Notification (Success with File Attachment)
         if: env.build_status == 'SUCCESS'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: build_output/${{ env.ZIP_NAME }}
           message: |
             🚀 ROOT ASSISTANT BUILD UPDATE
 
             Status: ✅ Sukses & Released
-            📦 File: **Root-Assistant-${{ env.VERSION_TAG }}.zip**
+            📦 File: ${{ env.ZIP_NAME }}
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             🌿 Versi Modul: ${{ env.VERSION_TAG }}
