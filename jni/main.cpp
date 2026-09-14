@@ -8,22 +8,28 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-class RootAssistantPhase2 : public zygisk::ModuleBase {
+class RootAssistantPhase3 : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
         this->env = env;
-        LOGI("RootAssistant Phase 2 loaded successfully.");
+        LOGI("RootAssistant Phase 3 loaded successfully.");
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Mengambil data nama paket aplikasi (process name) secara dinamis dari argumen Zygisk
-        // Di sini kita bisa menyaring aplikasi apa saja yang sedang dimuat
-        LOGD("Pre-app specialization triggered for process execution.");
+        // Mengekstrak nama paket aplikasi secara aman dari argumen Zygisk jika tersedia
+        // Menggunakan pointer aman untuk mencegah crash pada berbagai versi Android
+        if (args && args->nice_name) {
+            const char *nice_name = env->GetStringUTFChars(*args->nice_name, nullptr);
+            if (nice_name) {
+                LOGD("Target Application Detected -> Package: %s", nice_name);
+                env->ReleaseStringUTFChars(*args->nice_name, nice_name);
+            }
+        }
     }
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
-        // Ruang aman pasca-inisialisasi aplikasi
+        // Ruang eksekusi pasca-spesialisasi aplikasi
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
@@ -35,4 +41,4 @@ private:
     JNIEnv *env = nullptr;
 };
 
-REGISTER_ZYGISK_MODULE(RootAssistantPhase2)
+REGISTER_ZYGISK_MODULE(RootAssistantPhase3)
