@@ -18,7 +18,7 @@ static int my_faccessat(int dirfd, const char *pathname, int mode, int flags) {
     if (pathname != nullptr) {
         std::string path(pathname);
         if (path.find("su") != std::string::npos || path.find("magisk") != std::string::npos || path.find("kernelsu") != std::string::npos) {
-            errno = ENOENT;
+            errno = ENOENT; // Manipulasi output menjadi: File Not Found
             return -1;
         }
     }
@@ -45,10 +45,13 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
+        // Universal Smart Filtering (Target UID > 10000)
         if (args && args->uid >= 10000) {
             hide_root = true;
-            api->pltHookRegister(".*", "faccessat", (void*)my_faccessat, (void**)&orig_faccessat);
-            api->pltHookRegister(".*", "openat", (void*)my_openat, (void**)&orig_openat);
+            
+            // Perbaikan Zygisk API: Pakai 0, 0 untuk menembus semua loaded libraries (universal hook)
+            api->pltHookRegister(0, 0, "faccessat", (void*)my_faccessat, (void**)&orig_faccessat);
+            api->pltHookRegister(0, 0, "openat", (void*)my_openat, (void**)&orig_openat);
         } else {
             hide_root = false;
         }
@@ -56,8 +59,10 @@ public:
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
         if (hide_root) {
+            // Eksekusi Hook System Call
             api->pltHookCommit();
 
+            // Eksekusi Isolasi Namespace (Shamiko Style)
             std::vector<std::string> target_paths = {
                 "/data/adb", "/system/bin/su", "/system/xbin/su", "/sbin/su",
                 "/system/app/Superuser.apk", "/data/local/tmp", "/system/etc/init.d",
@@ -70,10 +75,11 @@ public:
                 umount2(path.c_str(), MNT_DETACH);
             }
 
+            // Bersihkan Jejak Memory Environtment
             unsetenv("_REJECT_MAGISK_HIDE");
             unsetenv("MAGISK_INJECT_LOG_LEVEL");
             
-            LOGI("Ultimate Stealth Active!");
+            LOGI("Ultimate Stealth Active! Syscall hooked & paths unmounted.");
         }
     }
 
