@@ -1,18 +1,37 @@
 #include <jni.h>
 #include <android/log.h>
+#include <unistd.h>
 #include "zygisk.hpp"
 
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "RootAssistant", __VA_ARGS__)
+#define LOG_TAG "RootAssistant"
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-class MyModule : public zygisk::ModuleBase {
+class RootAssistantModule : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
-        LOGD("Root Assistant Zygisk loaded successfully!");
+        this->api = api;
+        this->env = env;
+        LOGI("RootAssistant initialized successfully in Zygisk environment.");
     }
-    
+
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Logika saat aplikasi di-spesialisasi
+        // Logika sebelum aplikasi diinisialisasi (Sandbox / Pre-specialize)
+        LOGD("Pre-app specialization hook triggered.");
     }
+
+    void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
+        // Logika setelah aplikasi berjalan penuh
+    }
+
+    void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
+        // Logika untuk proses sistem (system_server)
+    }
+
+private:
+    zygisk::Api *api = nullptr;
+    JNIEnv *env = nullptr;
 };
 
-REGISTER_ZYGISK_MODULE(MyModule)
+// Daftarkan modul ke entry point Zygisk
+REGISTER_ZYGISK_MODULE(RootAssistantModule)
