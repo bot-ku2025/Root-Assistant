@@ -1,95 +1,103 @@
 name: Build Zygisk Module
-
 on:
   push:
     branches: [ main ]
     tags:
       - 'v*'
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Download & Setup Android NDK Directly
-      run: |
-        echo "Downloading Android NDK r26b..."
-        wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
-        echo "Extracting NDK..."
-        unzip -q android-ndk-r26b-linux.zip
-        echo "NDK_ROOT=$PWD/android-ndk-r26b" >> $GITHUB_ENV
-        echo "$PWD/android-ndk-r26b" >> $GITHUB_PATH
+      - name: Download & Setup Android NDK Directly
+        run: |
+          echo "Downloading Android NDK r26b..."
+          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
+          echo "Extracting NDK..."
+          unzip -q android-ndk-r26b-linux.zip
+          echo "NDK_ROOT=$PWD/android-ndk-r26b" >> $GITHUB_ENV
+          echo "$PWD/android-ndk-r26b" >> $GITHUB_PATH
 
-    - name: Capture Git Info
-      run: |
-        echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
-        echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-        echo "BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
-        echo "BUILD_DATE=$(TZ=Asia/Jakarta date '+%A, %d %B %Y')" >> $GITHUB_ENV
-        echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
+      - name: Capture Git Info
+        run: |
+          echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(TZ=Asia/Jakarta date '+%A, %d %B %Y')" >> $GITHUB_ENV
+          echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
 
-    - name: Build with NDK & Capture Error Log
-      id: compile
-      continue-on-error: true
-      run: |
-        cd jni
-        ndk-build 2> build_error.log
-        cat build_error.log
+      - name: Build with NDK & Capture Error Log
+        id: compile
+        continue-on-error: true
+        run: |
+          cd jni
+          ndk-build 2> build_error.log
+          cat build_error.log
 
-    - name: Check Build Status
-      id: check_status
-      run: |
-        if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
-          echo "build_status=FAILURE" >> $GITHUB_ENV
-          ERROR_MSG=$(tail -n 15 jni/build_error.log | tr '\n' ' ')
-          echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
-          exit 1
-        else
-          echo "build_status=SUCCESS" >> $GITHUB_ENV
-        fi
+      - name: Check Build Status
+        id: check_status
+        run: |
+          if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
+            echo "build_status=FAILURE" >> $GITHUB_ENV
+            ERROR_MSG=$(tail -n 15 jni/build_error.log | tr '\n' ' ')
+            echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
+            exit 1
+          else
+            echo "build_status=SUCCESS" >> $GITHUB_ENV
+          fi
 
-    - name: Package Module (ZIP)
-      if: env.build_status == 'SUCCESS'
-      run: |
-        mkdir -p build_output
-        zip -r build_output/Root_Assistant_Release.zip module.prop post-fs-data.sh service.sh sepolicy.rule libs/
+      - name: Package Module (ZIP)
+        if: env.build_status == 'SUCCESS'
+        run: |
+          mkdir -p build_output
+          zip -r build_output/Root_Assistant_Release.zip module.prop post-fs-data.sh service.sh sepolicy.rule libs/
 
-    - name: Send Telegram Notification (Success)
-      if: env.build_status == 'SUCCESS'
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.TELEGRAM_CHAT_ID }}
-        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        message: |
-          🚀 ROOT ASSISTANT BUILD UPDATE
+      - name: Create GitHub Release & Upload ZIP
+        if: env.build_status == 'SUCCESS' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build_output/Root_Assistant_Release.zip
+          name: Release ${{ github.ref_name }}
+          body_path: changelog.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          Status: ✅ Sukses (Release Ready)
-          📦 Build Run: Build Hybrid Module #${{ github.run_number }}
-          📌 Topik Update: ${{ env.COMMIT_MSG }}
-          🌿 Branch: ${{ env.BRANCH_NAME }}
-          🔑 Commit ID: ${{ env.COMMIT_SHA }}
-          📅 Tanggal: ${{ env.BUILD_DATE }}
-          ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
+      - name: Send Telegram Notification (Success)
+        if: env.build_status == 'SUCCESS'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            🚀 ROOT ASSISTANT BUILD UPDATE
 
-    - name: Send Telegram Notification (Failure with Error Log)
-      if: always() && env.build_status == 'FAILURE'
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.TELEGRAM_CHAT_ID }}
-        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        message: |
-          ❌ ROOT ASSISTANT BUILD FAILED
+            Status: ✅ Sukses (Release Ready)
+            📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+            📌 Topik Update: ${{ env.COMMIT_MSG }}
+            🌿 Branch: ${{ env.BRANCH_NAME }}
+            🔑 Commit ID: ${{ github.sha }}
+            📅 Tanggal: ${{ env.BUILD_DATE }}
+            ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
 
-          Status: ❌ Gagal Kompilasi (Error Detected)
-          📦 Build Run: Build Hybrid Module #${{ github.run_number }}
-          📌 Topik Update: ${{ env.COMMIT_MSG }}
-          
-          🔍 Detail Error Compiler:
-          ${{ env.error_details }}
+      - name: Send Telegram Notification (Failure with Error Log)
+        if: always() && env.build_status == 'FAILURE'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ❌ ROOT ASSISTANT BUILD FAILED
 
-          ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
+            Status: ❌ Gagal Kompilasi (Error Detected)
+            📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+            📌 Topik Update: ${{ env.COMMIT_MSG }}
+
+            🔍 Detail Error Compiler:
+            ${{ env.error_details }}
+
+            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
