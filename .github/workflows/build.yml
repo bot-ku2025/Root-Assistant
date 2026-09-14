@@ -4,25 +4,25 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
-  build:
++ build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Build Zip
         run: |
-          # Hapus file zip lama jika ada
           rm -f *.zip
-          
-          # Kompres isi direktori secara langsung tanpa membungkus folder utama
-          zip -r Root_Assistant_Stable.zip module.prop post-fs-data.sh service.sh sepolicy.rule system.prop zygisk/
+          zip -j Root_Assistant_Stable.zip module.prop post-fs-data.sh service.sh sepolicy.rule system.prop
+          zip -r Root_Assistant_Stable.zip zygisk/
           
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v8.0
           files: Root_Assistant_Stable.zip
-          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
