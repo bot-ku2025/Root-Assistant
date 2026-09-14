@@ -23,6 +23,11 @@ jobs:
           echo "NDK_ROOT=$PWD/android-ndk-r26b" >> $GITHUB_ENV
           echo "$PWD/android-ndk-r26b" >> $GITHUB_PATH
 
+      - name: Download Zygisk API Header
+        run: |
+          echo "Downloading official zygisk.hpp..."
+          wget -q https://raw.githubusercontent.com/topjohnwu/Magisk/master/native/include/zygisk.hpp -O jni/zygisk.hpp
+
       - name: Capture Git Info
         run: |
           echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
