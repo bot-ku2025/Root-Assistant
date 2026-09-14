@@ -15,13 +15,10 @@ jobs:
 
       - name: Compile Native Zygisk Binary with Manual NDK
         run: |
-          # Unduh dan setup Android NDK secara mandiri di runner
-          echo "Downloading Android NDK r26b..."
           wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
           unzip -q android-ndk-r26b-linux.zip
           export ANDROID_NDK_HOME=$PWD/android-ndk-r26b
 
-          # Kompilasi C++ Zygisk
           cd jni
           $ANDROID_NDK_HOME/ndk-build
           cd ..
@@ -29,42 +26,35 @@ jobs:
       - name: Assemble and Package Flat Hybrid ZIP
         run: |
           rm -f *.zip
-          
-          # Buat direktori staging bersih untuk struktur flat root
           rm -rf build_staging
           mkdir -p build_staging/zygisk
           
-          # 1. Ambil file modul utama dari folder module_files/
+          # 1. Salin berkas modul utama
           if [ -d "module_files" ]; then
             cp -rf module_files/* build_staging/
           fi
           
-          # 2. Timpa/lengkapi dengan file root jika ada
           [ -f module.prop ] && cp -f module.prop build_staging/
           [ -f post-fs-data.sh ] && cp -f post-fs-data.sh build_staging/
           [ -f service.sh ] && cp -f service.sh build_staging/
           [ -f sepolicy.rule ] && cp -f sepolicy.rule build_staging/
           [ -f system.prop ] && cp -f system.prop build_staging/
 
-          # 3. Ambil hasil kompilasi biner .so dan letakkan ke folder zygisk/
-          if [ -f "libs/arm64-v8a/arm64-v8a.so" ]; then
-            cp -f libs/arm64-v8a/arm64-v8a.so build_staging/zygisk/
-          elif [ -f "obj/local/arm64-v8a/arm64-v8a.so" ]; then
-            cp -f obj/local/arm64-v8a/arm64-v8a.so build_staging/zygisk/
-          fi
-
-          # 4. Validasi mutlak keberadaan biner .so
-          if [ ! -f "build_staging/zygisk/arm64-v8a.so" ]; then
-            echo "CRITICAL ERROR: Biner arm64-v8a.so gagal dikompilasi!"
+          # 2. Cari seluruh file .so hasil kompilasi NDK dan rename/salin ke zygisk/arm64-v8a.so
+          SO_FILE=$(find libs/ obj/ jni/ -name "*.so" 2>/dev/null | head -n 1)
+          
+          if [ -n "$SO_FILE" ]; then
+            cp -f "$SO_FILE" build_staging/zygisk/arm64-v8a.so
+            echo "Binary successfully packaged: $SO_FILE -> build_staging/zygisk/arm64-v8a.so"
+          else
+            echo "CRITICAL ERROR: Tidak ada berkas .so yang berhasil dibuat oleh NDK!"
             exit 1
           fi
 
-          # 5. Kompres ZIP secara flat absolute
+          # 3. Kompresi struktur flat root
           cd build_staging
           zip -r ../Root_Assistant_Stable.zip .
           cd ..
-          
-          echo "Build finished successfully: Root_Assistant_Stable.zip created."
 
       - name: Upload Release Artifact
         uses: softprops/action-gh-release@v2
