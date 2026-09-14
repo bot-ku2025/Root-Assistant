@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <sys/system_properties.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <cstring>
 
 #define LOG_TAG "RootAssistant"
@@ -50,12 +49,11 @@ struct Api {
     virtual void setOption(Option opt) = 0;
     virtual void *connectCompanion() = 0;
     virtual void registerModule(ModuleBase *module) = 0;
-    virtual void registerCompanion(void (*handler)(int)) = 0;
     static void init(Api *api, JNIEnv *env) {}
 };
 } // namespace zygisk
 
-class RootAssistantPhase5 : public zygisk::ModuleBase {
+class RootAssistantPhase4_5 : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
@@ -66,7 +64,7 @@ public:
             return;
         }
         
-        LOGI("RootAssistant Phase 5 (Integrated IPC Pipeline) loaded successfully.");
+        LOGI("RootAssistant Phase 4.5 (Environment Gatekeeper) loaded successfully.");
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
@@ -76,8 +74,7 @@ public:
                 const char *name = env->GetStringUTFChars(nice_name, nullptr);
                 if (name) {
                     if (strstr(name, "com.android") == nullptr) {
-                        LOGD("Pipeline Target App Detected -> %s", name);
-                        sendDataToCompanion(name);
+                        LOGD("Verified Target App -> %s", name);
                     }
                     env->ReleaseStringUTFChars(nice_name, name);
                 }
@@ -86,7 +83,7 @@ public:
     }
 
     void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
-        LOGI("System server specialization secured under integrated pipeline.");
+        LOGI("System server specialization secured under verified environment.");
     }
 
 private:
@@ -110,34 +107,12 @@ private:
         return (has_susfs || has_ksu_derivative);
     }
 
-    void sendDataToCompanion(const char *package_name) {
-        int fd = api->connectCompanion();
-        if (fd >= 0) {
-            uint32_t len = strlen(package_name);
-            write(fd, &len, sizeof(len));
-            write(fd, package_name, len);
-            close(fd);
-        }
-    }
-
     zygisk::Api *api = nullptr;
     JNIEnv *env = nullptr;
 };
 
-static void companion_handler(int socket_fd) {
-    uint32_t len = 0;
-    if (read(socket_fd, &len, sizeof(len)) == sizeof(len) && len > 0 && len < 256) {
-        char package_name[256];
-        memset(package_name, 0, sizeof(package_name));
-        if (read(socket_fd, package_name, len) > 0) {
-            LOGI("[DAEMON IPC] Successfully received target package through pipeline: %s", package_name);
-        }
-    }
-    close(socket_fd);
-}
-
 static void register_module(zygisk::Api *api) {
-    zygisk::ModuleBase *module = new RootAssistantPhase5();
+    zygisk::ModuleBase *module = new RootAssistantPhase4_5();
     api->registerModule(module);
 }
 
@@ -145,7 +120,6 @@ extern "C" {
 __attribute__((visibility("default"))) __attribute__((used))
 void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) {
     zygisk::Api::init(api, env);
-    api->registerCompanion(companion_handler);
     register_module(api);
 }
 }

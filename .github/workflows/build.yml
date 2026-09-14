@@ -67,7 +67,7 @@ jobs:
           ⏰ Waktu Selesai: $(TZ=Asia/Jakarta date '+%H:%M:%S') WIB
 
     - name: Send Telegram Notification (Failure with Error Log)
-      if: env.build_status == 'FAILURE'
+      if: always() && env.build_status == 'FAILURE'
       uses: appleboy/telegram-action@master
       with:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
