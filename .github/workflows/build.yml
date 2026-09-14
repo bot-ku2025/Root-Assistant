@@ -9,98 +9,33 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Header and Compile C++ NDK
+      - uses: actions/checkout@v4
+      - name: Setup Header and Compile NDK
         run: |
           mkdir -p jni
-          cat << 'HEADER' > jni/zygisk.hpp
-#pragma once
-#include <jni.h>
-#include <stdint.h>
-
-namespace zygisk {
-struct AppSpecializeArgs;
-struct ServerSpecializeArgs;
-class Api;
-
-class ModuleBase {
-public:
-    virtual void onLoad(Api *api, JNIEnv *env) {}
-    virtual void preAppSpecialize(AppSpecializeArgs *args) {}
-    virtual void postAppSpecialize(const AppSpecializeArgs *args) {}
-    virtual void preServerSpecialize(ServerSpecializeArgs *args) {}
-    virtual void postServerSpecialize(const ServerSpecializeArgs *args) {}
-};
-
-enum Option : uint32_t {
-    FORCE_DENYLIST_UNMOUNT = 0,
-    DLCLOSE_MODULE_LIBRARY = 1,
-};
-
-class Api {
-public:
-    virtual bool setOption(Option option) = 0;
-};
-}
-
-#define REGISTER_ZYGISK_MODULE(className) \
-extern "C" [[gnu::visibility("default")]] \
-void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { \
-    static className module; \
-    module.onLoad(api, env); \
-}
-HEADER
+          echo '#pragma once' > jni/zygisk.hpp
+          echo '#include <jni.h>' >> jni/zygisk.hpp
+          echo '#include <stdint.h>' >> jni/zygisk.hpp
+          echo 'namespace zygisk { struct AppSpecializeArgs; struct ServerSpecializeArgs; class Api; class ModuleBase { public: virtual void onLoad(Api *api, JNIEnv *env) {} virtual void preAppSpecialize(AppSpecializeArgs *args) {} virtual void postAppSpecialize(const AppSpecializeArgs *args) {} }; enum Option : uint32_t { FORCE_DENYLIST_UNMOUNT = 0, DLCLOSE_MODULE_LIBRARY = 1 }; class Api { public: virtual bool setOption(Option option) = 0; }; }' >> jni/zygisk.hpp
+          echo '#define REGISTER_ZYGISK_MODULE(className) extern "C" [[gnu::visibility("default")]] void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { static className module; module.onLoad(api, env); }' >> jni/zygisk.hpp
 
           wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
           unzip -q android-ndk-r26b-linux.zip
           export ANDROID_NDK_HOME=$PWD/android-ndk-r26b
+          cd jni && $ANDROID_NDK_HOME/ndk-build && cd ..
 
-          if [ -d "jni" ] && [ "$(ls -A jni)" ]; then
-            cd jni
-            $ANDROID_NDK_HOME/ndk-build
-            cd ..
-          fi
-
-      - name: Create Zip Artifact
+      - name: Create Zip
         run: |
-          rm -f *.zip
-          rm -rf build_staging
-          mkdir -p build_staging/zygisk
-
+          rm -f *.zip && mkdir -p build_staging/zygisk
           SO_FILE=$(find libs/ obj/ jni/ -name "*.so" 2>/dev/null | head -n 1)
-          if [ -n "$SO_FILE" ]; then
-            cp -f "$SO_FILE" build_staging/zygisk/arm64-v8a.so
-          fi
-
+          [ -n "$SO_FILE" ] && cp -f "$SO_FILE" build_staging/zygisk/arm64-v8a.so
           [ -f module.prop ] && cp -f module.prop build_staging/
           [ -f post-fs-data.sh ] && cp -f post-fs-data.sh build_staging/
           [ -f service.sh ] && cp -f service.sh build_staging/
           [ -f sepolicy.rule ] && cp -f sepolicy.rule build_staging/
-          [ -f system.prop ] && cp -f system.prop build_staging/
-          [ -f customize.sh ] && cp -f customize.sh build_staging/
+          cd build_staging && zip -r ../Root_Assistant_Stable.zip . && cd ..
 
-          cd build_staging
-          zip -r ../Root_Assistant_Stable.zip .
-          cd ..
-
-      - name: Save Artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: Root_Assistant_Stable
           path: Root_Assistant_Stable.zip
-
-      - name: Send Telegram Notification (Stable Action)
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |
-            ✅ Root Assistant Build Sukses!
-            
-            📌 Commit: ${{ github.sha }}
-            💬 Pesan: ${{ github.event.head_commit.message }}
-            🌿 Branch: ${{ github.ref_name }}
