@@ -1,4 +1,4 @@
-name: Build Module
+name: Build Hybrid Module
 
 on:
   push:
@@ -13,33 +13,60 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Flat ZIP with Repo Binary
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v3
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+          add-to-path: true
+
+      - name: Compile Native Zygisk Binary
+        run: |
+          cd jni
+          ndk-build
+          cd ..
+
+      - name: Assemble and Package Flat Hybrid ZIP
         run: |
           rm -f *.zip
           
-          # Buat folder zygisk bersih
-          rm -rf zygisk
-          mkdir -p zygisk
+          # Buat direktori staging bersih untuk struktur flat root
+          rm -rf build_staging
+          mkdir -p build_staging/zygisk
           
-          # Cari otomatis file arm64-v8a.so di manapun letaknya di dalam repo Anda
-          FOUND_SO=$(find . -name "arm64-v8a.so" | head -n 1)
+          # 1. Ambil file modul utama dari folder module_files/ (sumber kebenaran utama repo Anda)
+          if [ -d "module_files" ]; then
+            cp -rf module_files/* build_staging/
+          fi
           
-          if [ -n "$FOUND_SO" ]; then
-            echo "Found binary at: $FOUND_SO"
-            cp "$FOUND_SO" zygisk/arm64-v8a.so
-          else
-            echo "Error: Biner arm64-v8a.so tidak ditemukan di dalam repo!"
+          # 2. Timpa/lengkapi dengan file root jika ada
+          [ -f module.prop ] && cp -f module.prop build_staging/
+          [ -f post-fs-data.sh ] && cp -f post-fs-data.sh build_staging/
+          [ -f service.sh ] && cp -f service.sh build_staging/
+          [ -f sepolicy.rule ] && cp -f sepolicy.rule build_staging/
+          [ -f system.prop ] && cp -f system.prop build_staging/
+
+          # 3. Ambil hasil kompilasi biner .so dan letakkan ke folder zygisk/
+          if [ -f "libs/arm64-v8a/arm64-v8a.so" ]; then
+            cp -f libs/arm64-v8a/arm64-v8a.so build_staging/zygisk/
+          elif [ -f "obj/local/arm64-v8a/arm64-v8a.so" ]; then
+            cp -f obj/local/arm64-v8a/arm64-v8a.so build_staging/zygisk/
+          fi
+
+          # 4. Validasi mutlak keberadaan biner .so agar tidak pernah kosong (0 byte)
+          if [ ! -f "build_staging/zygisk/arm64-v8a.so" ]; then
+            echo "CRITICAL ERROR: Biner arm64-v8a.so gagal dikompilasi!"
             exit 1
           fi
 
-          # Kompres ZIP secara flat root mutlak (tanpa folder pembungkus)
-          zip -j Root_Assistant_Stable.zip module.prop post-fs-data.sh
-          [ -f service.sh ] && zip -j Root_Assistant_Stable.zip service.sh || true
-          [ -f sepolicy.rule ] && zip -j Root_Assistant_Stable.zip sepolicy.rule || true
-          [ -f system.prop ] && zip -j Root_Assistant_Stable.zip system.prop || true
-          zip -r Root_Assistant_Stable.zip zygisk/
+          # 5. Kompres ZIP secara flat absolute (tanpa folder pembungkus di dalam arsip)
+          cd build_staging
+          zip -r ../Root_Assistant_Stable.zip .
+          cd ..
+          
+          echo "Build finished successfully: Root_Assistant_Stable.zip created."
 
-      - name: Upload Release
+      - name: Upload Release Artifact
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v8.0
