@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Auto-Generate Zygisk Header & Compile C++ NDK
+      - name: Prepare Header and Build Native NDK
         run: |
           mkdir -p jni
           cat << 'HEADER' > jni/zygisk.hpp
@@ -63,7 +63,7 @@ HEADER
             cd ..
           fi
 
-      - name: Assemble Flat ZIP Direct from Root
+      - name: Create Module Package
         run: |
           rm -f *.zip
           rm -rf build_staging
@@ -85,7 +85,7 @@ HEADER
           zip -r ../Root_Assistant_Stable.zip .
           cd ..
 
-      - name: Upload Build Artifact (Actions Only)
+      - name: Save Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Root_Assistant_Stable
