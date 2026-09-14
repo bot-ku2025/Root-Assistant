@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <android/log.h>
 #include <string>
 #include <vector>
@@ -17,7 +18,6 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Targetkan semua aplikasi pihak ketiga (UID >= 10000)
         if (args && args->uid >= 10000) {
             hide_root = true;
         } else {
@@ -27,34 +27,28 @@ public:
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
         if (hide_root) {
-            // Advanced Namespace Isolation (Shamiko Style - 100% Stable & Safe from Crash)
+            // Daftar jalur inti yang aman untuk diperiksa dan di-unmount
             std::vector<std::string> target_paths = {
                 "/data/adb", 
                 "/system/bin/su", 
                 "/system/xbin/su", 
                 "/sbin/su",
-                "/system/app/Superuser.apk", 
                 "/data/local/tmp", 
-                "/system/etc/init.d",
                 "/data/magisk", 
                 "/sbin/magisk", 
-                "/sbin/magiskinit", 
-                "/sys/fs/selinux/enforce",
-                "/system/bin/app_process32_xposed", 
-                "/system/bin/app_process64_xposed",
-                "/data/misc/apatch", 
-                "/system/bin/kcl"
+                "/data/misc/apatch"
             };
 
+            struct stat st;
             for (const auto& path : target_paths) {
-                umount2(path.c_str(), MNT_DETACH);
+                // Hanya unmount jika jalur tersebut benar-benar ada fisik/mount-nya
+                if (stat(path.c_str(), &st) == 0) {
+                    umount2(path.c_str(), MNT_DETACH);
+                }
             }
 
-            // Bersihkan jejak variabel lingkungan memori
             unsetenv("_REJECT_MAGISK_HIDE");
             unsetenv("MAGISK_INJECT_LOG_LEVEL");
-            
-            LOGI("Stable Namespace Isolation Active for UID: %d", args->uid);
         }
     }
 
