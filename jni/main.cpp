@@ -1,26 +1,24 @@
-#include <cstdlib>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
 #include <android/log.h>
 #include <string>
 #include <vector>
-#include <cerrno>
 #include "zygisk.hpp"
 
-#define LOG_TAG "Root-Assistant-Ultimate"
+#define LOG_TAG "Root-Assistant"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-// ==========================================
-// SYSCALL HOOKING (Zygisk Assistant Style)
-// ==========================================
 static int (*orig_faccessat)(int dirfd, const char *pathname, int mode, int flags);
 static int my_faccessat(int dirfd, const char *pathname, int mode, int flags) {
     if (pathname != nullptr) {
         std::string path(pathname);
         if (path.find("su") != std::string::npos || path.find("magisk") != std::string::npos || path.find("kernelsu") != std::string::npos) {
-            errno = ENOENT; // Bohong: File tidak ditemukan
+            errno = ENOENT;
             return -1;
         }
     }
@@ -39,9 +37,6 @@ static int my_openat(int dirfd, const char *pathname, int flags, mode_t mode) {
     return orig_openat(dirfd, pathname, flags, mode);
 }
 
-// ==========================================
-// MAIN ZYGISK ENGINE
-// ==========================================
 class RootAssistantModule : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
@@ -50,11 +45,8 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Universal Smart Filtering: Aktifkan hide untuk semua User Apps (UID > 10000)
-        if (args->uid >= 10000) {
+        if (args && args->uid >= 10000) {
             hide_root = true;
-            
-            // Daftarkan PLT Hooks untuk menipu pembacaan memori
             api->pltHookRegister(".*", "faccessat", (void*)my_faccessat, (void**)&orig_faccessat);
             api->pltHookRegister(".*", "openat", (void*)my_openat, (void**)&orig_openat);
         } else {
@@ -64,12 +56,8 @@ public:
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
         if (hide_root) {
-            // Terapkan semua Hook yang sudah didaftarkan
-            if (api->pltHookCommit()) {
-                LOGI("Syscall Hooking Berhasil Diterapkan.");
-            }
+            api->pltHookCommit();
 
-            // Advanced Namespace Isolation (Shamiko Style)
             std::vector<std::string> target_paths = {
                 "/data/adb", "/system/bin/su", "/system/xbin/su", "/sbin/su",
                 "/system/app/Superuser.apk", "/data/local/tmp", "/system/etc/init.d",
@@ -79,15 +67,13 @@ public:
             };
 
             for (const auto& path : target_paths) {
-                // Cabut paksa jalur root dari memori proses ini
                 umount2(path.c_str(), MNT_DETACH);
             }
 
-            // Environment Scrubbing: Bersihkan variabel memori yang mencurigakan
             unsetenv("_REJECT_MAGISK_HIDE");
             unsetenv("MAGISK_INJECT_LOG_LEVEL");
             
-            LOGI("Mode Stealth Maksimal Aktif untuk UID: %d", args->uid);
+            LOGI("Ultimate Stealth Active!");
         }
     }
 

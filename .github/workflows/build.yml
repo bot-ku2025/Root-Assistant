@@ -2,8 +2,8 @@ name: Build Zygisk Module
 on:
   push:
     branches: [ main ]
-    tags:
-      - 'v*'
+  tags:
+    - 'v*'
 
 permissions:
   contents: write
@@ -29,28 +29,20 @@ jobs:
 
       - name: Download Zygisk API Header
         run: |
-          echo "Downloading official zygisk.hpp..."
           mkdir -p jni
           wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
 
-      - name: Capture Git Info & Sanitize Version from module.prop
+      - name: Capture Git Info & Sanitize Version
         run: |
           echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
-          echo "BUILD_DATE=$(TZ=Asia/Jakarta date '+%A, %d %B %Y')" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
-          
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
-            if [ -n "$CLEAN_VERSION" ]; then
-              echo "VERSION_TAG=$CLEAN_VERSION" >> $GITHUB_ENV
-            else
-              echo "VERSION_TAG=v1.7-Phase7" >> $GITHUB_ENV
-            fi
+            echo "VERSION_TAG=${CLEAN_VERSION:-v3.0-Ultimate}" >> $GITHUB_ENV
           else
-            echo "VERSION_TAG=v1.7-Phase7" >> $GITHUB_ENV
+            echo "VERSION_TAG=v3.0-Ultimate" >> $GITHUB_ENV
           fi
 
       - name: Build with NDK & Capture Error Log
@@ -66,7 +58,7 @@ jobs:
         run: |
           if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
             echo "build_status=FAILURE" >> $GITHUB_ENV
-            ERROR_MSG=$(tail -n 15 jni/build_error.log | tr '\n' ' ')
+            ERROR_MSG=$(tail -n 25 jni/build_error.log | tr '\n' ' ' | sed 's/"/'\''/g')
             echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
             exit 1
           else
@@ -81,17 +73,7 @@ jobs:
           zip -r "build_output/$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule libs/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
-      - name: Create GitHub Release & Upload ZIP
-        if: env.build_status == 'SUCCESS' && startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build_output/${{ env.ZIP_NAME }}
-          name: Release ${{ github.ref_name }}
-          body_path: changelog.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Send Telegram Notification (Success with File Attachment)
+      - name: Send Telegram Notification (Success)
         if: env.build_status == 'SUCCESS'
         uses: appleboy/telegram-action@master
         with:
@@ -105,9 +87,6 @@ jobs:
             📦 File: *Root-Assistant-${{ env.VERSION_TAG }}*
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
-            🌿 Versi Modul: ${{ env.VERSION_TAG }}
-            🔑 Commit ID: ${{ env.COMMIT_SHA }}
-            📅 Tanggal: ${{ env.BUILD_DATE }}
             ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
 
       - name: Send Telegram Notification (Failure with Error Log)
@@ -119,7 +98,10 @@ jobs:
           message: |
             ❌ ROOT ASSISTANT BUILD FAILED
 
-            Status: ❌ Gagal (Error pada Release/Compiler)
+            Status: ❌ Gagal (Error Compiler)
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
+            
+            ⚠️ **LOG ERROR C++:**
+            ${{ env.error_details }}
