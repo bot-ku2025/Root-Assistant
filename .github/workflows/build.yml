@@ -33,7 +33,7 @@ jobs:
           mkdir -p jni
           wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
 
-      - name: Capture Git Info & Auto-detect Version from module.prop
+      - name: Capture Git Info & Sanitize Version from module.prop
         run: |
           echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
@@ -41,11 +41,11 @@ jobs:
           echo "BUILD_DATE=$(TZ=Asia/Jakarta date '+%A, %d %B %Y')" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           
-          # Auto-extract version from module.prop (e.g., version=v1.7-Phase7 -> v1.7-Phase7)
           if [ -f module.prop ]; then
-            MOD_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r' | tr ' ' '_')
-            if [ -n "$MOD_VERSION" ]; then
-              echo "VERSION_TAG=$MOD_VERSION" >> $GITHUB_ENV
+            RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
+            CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
+            if [ -n "$CLEAN_VERSION" ]; then
+              echo "VERSION_TAG=$CLEAN_VERSION" >> $GITHUB_ENV
             else
               echo "VERSION_TAG=v1.7-Phase7" >> $GITHUB_ENV
             fi
@@ -91,18 +91,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Send Telegram Notification (Success with File)
+      - name: Send Telegram Notification (Success Text Only)
         if: env.build_status == 'SUCCESS'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          document: build_output/${{ env.ZIP_NAME }}
           message: |
             🚀 ROOT ASSISTANT BUILD UPDATE
 
             Status: ✅ Sukses & Released
-            📦 File: ${{ env.ZIP_NAME }}
+            📦 File: **Root-Assistant-${{ env.VERSION_TAG }}.zip**
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             🌿 Versi Modul: ${{ env.VERSION_TAG }}
