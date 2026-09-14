@@ -87,10 +87,16 @@ jobs:
           zip -r ../Root_Assistant_Stable.zip .
           cd ..
 
-      - name: Get Build Timestamp
+      - name: Prepare Build Metadata
         if: always()
-        id: timestamp
+        id: metadata
         run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "status_text=✅ Sukses (Stable)" >> $GITHUB_OUTPUT
+          else
+            echo "status_text=❌ Gagal (Failed)" >> $GITHUB_OUTPUT
+          fi
+          echo "commit_id=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           echo "date=$(TZ='Asia/Jakarta' date '+%A, %d %B %Y')" >> $GITHUB_OUTPUT
           echo "time=$(TZ='Asia/Jakarta' date '+%H:%M:%S WIB')" >> $GITHUB_OUTPUT
 
@@ -111,9 +117,9 @@ jobs:
           message: |
             <b>🚀 ROOT ASSISTANT BUILD UPDATE</b>
             
-            <b>Status:</b> ${{ job.status == 'success' && '✅ Sukses (Stable)' || '❌ Gagal (Failed)' }}
+            <b>Status:</b> ${{ steps.metadata.outputs.status_text }}
             <b>📌 Topik Update:</b> ${{ github.event.head_commit.message }}
-            <b>🔑 Commit ID:</b> <code>${{ github.sha }}</code>
-            <b>📅 Tanggal:</b> ${{ steps.timestamp.outputs.date }}
-            <b>⏰ Waktu Selesai:</b> ${{ steps.timestamp.outputs.time }}
+            <b>🔑 Commit ID:</b> <code>${{ steps.metadata.outputs.commit_id }}</code>
+            <b>📅 Tanggal:</b> ${{ steps.metadata.outputs.date }}
+            <b>⏰ Waktu Selesai:</b> ${{ steps.metadata.outputs.time }}
             <b>🌿 Branch:</b> ${{ github.ref_name }}
