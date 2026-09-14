@@ -1,2 +1,2 @@
-Major Update v2: Add Maps filtering and expanded Sentinel hiding
+Major Fix: Add comprehensive Sysfs, KCAL, LMK, and Uname spoofing for Disclosure
 
