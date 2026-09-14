@@ -29,18 +29,12 @@ jobs:
           rm -rf build_staging
           mkdir -p build_staging/zygisk
           
-          # 1. Salin berkas modul utama
+          # Salin file modul dari module_files
           if [ -d "module_files" ]; then
             cp -rf module_files/* build_staging/
           fi
-          
-          [ -f module.prop ] && cp -f module.prop build_staging/
-          [ -f post-fs-data.sh ] && cp -f post-fs-data.sh build_staging/
-          [ -f service.sh ] && cp -f service.sh build_staging/
-          [ -f sepolicy.rule ] && cp -f sepolicy.rule build_staging/
-          [ -f system.prop ] && cp -f system.prop build_staging/
 
-          # 2. Cari seluruh file .so hasil kompilasi NDK dan rename/salin ke zygisk/arm64-v8a.so
+          # Ambil hasil kompilasi biner .so
           SO_FILE=$(find libs/ obj/ jni/ -name "*.so" 2>/dev/null | head -n 1)
           
           if [ -n "$SO_FILE" ]; then
@@ -51,7 +45,7 @@ jobs:
             exit 1
           fi
 
-          # 3. Kompresi struktur flat root
+          # Kompresi struktur flat root
           cd build_staging
           zip -r ../Root_Assistant_Stable.zip .
           cd ..

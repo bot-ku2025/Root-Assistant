@@ -1,6 +1,0 @@
-id=root_assistant
-name=Root Assistant
-version=v8.1
-versionCode=81
-author=STNK
-description=Kernel VFS cloaking & userspace shield with elite hybrid diagnostics.
