@@ -2,8 +2,8 @@ name: Build Zygisk Module
 on:
   push:
     branches: [ main ]
-  tags:
-    - 'v*'
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -103,5 +103,5 @@ jobs:
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
             
-            ⚠️ **LOG ERROR C++:**
+            ⚠️ LOG ERROR C++:
             ${{ env.error_details }}
