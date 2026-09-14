@@ -99,8 +99,11 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ✅ Root Assistant Build Sukses!
+            🚀 <b>ROOT ASSISTANT BUILD UPDATE</b>
             
-            📌 Commit ID: ${{ github.sha }}
-            💬 Pesan: ${{ github.event.head_commit.message }}
-            🌿 Branch: ${{ github.ref_name }}
+            ✅ <b>Status:</b> Sukses (Stable)
+            📌 <b>Topik Update:</b> ${{ github.event.head_commit.message }}
+            🔑 <b>Commit ID:</b> <code>${{ github.sha }}</code>
+            📅 <b>Tanggal:</b> $(TZ='Asia/Jakarta' date '+%A, %d %B %Y')
+            ⏰ <b>Waktu Selesai:</b> $(TZ='Asia/Jakarta' date '+%H:%M:%S WIB')
+            🌿 <b>Branch:</b> ${{ github.ref_name }}
