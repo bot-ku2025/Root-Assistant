@@ -11,17 +11,17 @@
 
 class RootAssistantModule : public zygisk::ModuleBase {
 public:
-    void onModuleLoad(zygisk::Api *api, JNIEnv *env) override {
+    void onModuleLoad(zygisk::Api *api, JNIEnv *env) {
         this->api = api;
         this->env = env;
         LOGI("Root-Assistant v1.7-Phase7 Zygisk module loaded successfully.");
     }
 
-    void preSpecializeApp(zygisk::AppSpecializeArgs *args) override {
+    void preSpecializeApp(zygisk::AppSpecializeArgs *args) {
         LOGD("Root-Assistant: preSpecializeApp hook active.");
     }
 
-    void postSpecializeApp(const zygisk::AppSpecializeArgs *args) override {
+    void postSpecializeApp(const zygisk::AppSpecializeArgs *args) {
     }
 
 private:
