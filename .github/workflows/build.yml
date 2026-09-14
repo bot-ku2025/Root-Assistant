@@ -14,9 +14,8 @@ jobs:
         run: |
           mkdir -p jni
           
-          # Auto generate zygisk.hpp langsung di server jika belum ada
-          if [ ! -f "jni/zygisk.hpp" ]; then
-            cat << 'HEADER' > jni/zygisk.hpp
+          # Auto-generate file zygisk.hpp langsung di server sebelum kompilasi NDK
+          cat << 'HEADER' > jni/zygisk.hpp
 #pragma once
 #include <jni.h>
 #include <stdint.h>
@@ -53,9 +52,8 @@ void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { \
     module.onLoad(api, env); \
 }
 HEADER
-          fi
 
-          # Install NDK & Compile
+          # Download NDK & Jalankan Kompilasi C++
           wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
           unzip -q android-ndk-r26b-linux.zip
           export ANDROID_NDK_HOME=$PWD/android-ndk-r26b
