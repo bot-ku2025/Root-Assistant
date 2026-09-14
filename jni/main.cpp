@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include <sched.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <android/log.h>
@@ -27,7 +28,11 @@ public:
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
         if (hide_root) {
-            // Daftar jalur inti yang aman untuk diperiksa dan di-unmount
+            // Buat namespace privat agar unmount aman dan tidak bikin crash aplikasi
+            if (unshare(CLONE_NEWNS) != 0) {
+                return;
+            }
+
             std::vector<std::string> target_paths = {
                 "/data/adb", 
                 "/system/bin/su", 
@@ -41,7 +46,6 @@ public:
 
             struct stat st;
             for (const auto& path : target_paths) {
-                // Hanya unmount jika jalur tersebut benar-benar ada fisik/mount-nya
                 if (stat(path.c_str(), &st) == 0) {
                     umount2(path.c_str(), MNT_DETACH);
                 }
@@ -49,6 +53,8 @@ public:
 
             unsetenv("_REJECT_MAGISK_HIDE");
             unsetenv("MAGISK_INJECT_LOG_LEVEL");
+            
+            LOGI("Isolated namespace active for UID: %d", args->uid);
         }
     }
 
