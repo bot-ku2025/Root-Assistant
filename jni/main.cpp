@@ -2,12 +2,12 @@
 #include <android/log.h>
 #include <unistd.h>
 #include <sys/system_properties.h>
+#include <cstring>
 
 #define LOG_TAG "RootAssistant"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-// Definisi Standar Zygisk API langsung (Self-contained implementation)
 namespace zygisk {
 struct Api;
 struct AppSpecializeArgs {
@@ -41,10 +41,7 @@ public:
     virtual void postServerSpecialize(const ServerSpecializeArgs *args) {}
 };
 struct Api {
-    enum Option {
-        PATCH_DLOPEN = 0,
-        DLCLOSE_SKIP_FINI = 1
-    };
+    enum Option { PATCH_DLOPEN = 0, DLCLOSE_SKIP_FINI = 1 };
     virtual void *pltHookRegister(const char *lib, const char *symbol, void *new_func, void **old_func) = 0;
     virtual void *pltHookCommit() = 0;
     virtual void setOption(Option opt) = 0;
@@ -54,12 +51,12 @@ struct Api {
 };
 } // namespace zygisk
 
-class RootAssistantModule : public zygisk::ModuleBase {
+class RootAssistantPhase4 : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
         this->env = env;
-        LOGI("RootAssistant Self-Contained Core loaded successfully.");
+        LOGI("RootAssistant Phase 4 (Target Filtering) loaded successfully.");
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
@@ -68,7 +65,10 @@ public:
             if (nice_name && env) {
                 const char *name = env->GetStringUTFChars(nice_name, nullptr);
                 if (name) {
-                    LOGD("Target App Detected -> %s", name);
+                    // Filter: Menyaring proses aplikasi di luar system/android agar mudah dipantau
+                    if (strstr(name, "com.android") == nullptr) {
+                        LOGD("Filtered Target App -> %s", name);
+                    }
                     env->ReleaseStringUTFChars(nice_name, name);
                 }
             }
@@ -84,9 +84,8 @@ private:
     JNIEnv *env = nullptr;
 };
 
-// Ekspor entry point Zygisk secara mandiri
 static void register_module(zygisk::Api *api) {
-    zygisk::ModuleBase *module = new RootAssistantModule();
+    zygisk::ModuleBase *module = new RootAssistantPhase4();
     api->registerModule(module);
 }
 
