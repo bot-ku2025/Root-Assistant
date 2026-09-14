@@ -88,18 +88,21 @@ jobs:
           cd ..
 
       - name: Get Build Timestamp
+        if: always()
         id: timestamp
         run: |
           echo "date=$(TZ='Asia/Jakarta' date '+%A, %d %B %Y')" >> $GITHUB_OUTPUT
           echo "time=$(TZ='Asia/Jakarta' date '+%H:%M:%S WIB')" >> $GITHUB_OUTPUT
 
       - name: Save Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Root_Assistant_Stable
           path: Root_Assistant_Stable.zip
 
       - name: Send Telegram Notification
+        if: always()
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -108,7 +111,7 @@ jobs:
           message: |
             <b>🚀 ROOT ASSISTANT BUILD UPDATE</b>
             
-            <b>✅ Status:</b> Sukses (Stable)
+            <b>Status:</b> ${{ job.status == 'success' && '✅ Sukses (Stable)' || '❌ Gagal (Failed)' }}
             <b>📌 Topik Update:</b> ${{ github.event.head_commit.message }}
             <b>🔑 Commit ID:</b> <code>${{ github.sha }}</code>
             <b>📅 Tanggal:</b> ${{ steps.timestamp.outputs.date }}
