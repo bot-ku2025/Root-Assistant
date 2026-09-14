@@ -13,21 +13,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Zip and Package Correctly
+      - name: Build Clean Flat ZIP
         run: |
           rm -f *.zip
           
-          # Buat folder zygisk dan pastikan file .so ada (jika tidak ada, buat file placeholder agar build tetap sukses)
+          # Siapkan direktori zygisk dan cari file .so yang sudah ada di repo Anda
+          rm -rf zygisk
           mkdir -p zygisk
-          if [ ! -f "zygisk/arm64-v8a.so" ] && ! find . -name "arm64-v8a.so" -exec cp {} zygisk/ \; | grep -q .; then
-            touch zygisk/arm64-v8a.so
+          
+          # Cari file arm64-v8a.so di seluruh folder repo dan pindahkan ke folder zygisk/
+          SO_FILE=$(find . -name "arm64-v8a.so" | head -n 1)
+          if [ -n "$SO_FILE" ]; then
+            cp "$SO_FILE" zygisk/
+          else
+            echo "Error: arm64-v8a.so tidak ditemukan di repo!"
+            exit 1
           fi
 
-          # Buat ZIP secara flat root mutlak
-          zip -j Root_Assistant_Stable.zip module.prop post-fs-data.sh
+          # Kemas file root secara flat (tanpa folder pembungkus)
+          [ -f module.prop ] && zip -j Root_Assistant_Stable.zip module.prop
+          [ -f post-fs-data.sh ] && zip -j Root_Assistant_Stable.zip post-fs-data.sh
           [ -f service.sh ] && zip -j Root_Assistant_Stable.zip service.sh || true
           [ -f sepolicy.rule ] && zip -j Root_Assistant_Stable.zip sepolicy.rule || true
           [ -f system.prop ] && zip -j Root_Assistant_Stable.zip system.prop || true
+          
+          # Masukkan folder zygisk beserta biner .so di dalamnya secara benar
           zip -r Root_Assistant_Stable.zip zygisk/
 
       - name: Upload Release
