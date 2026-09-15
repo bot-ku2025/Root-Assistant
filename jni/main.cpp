@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <unistd.h>
-#include <sched.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <android/log.h>
@@ -28,12 +27,7 @@ public:
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
         if (hide_root) {
-            // Buat namespace privat yang aman
-            if (unshare(CLONE_NEWNS) != 0) {
-                return;
-            }
-
-            // HANYA targetkan direktori root/adb/su (Jangan sentuh /system agar tidak crash)
+            // Targetkan secara spesifik jalur artefak root, magisk, dan modules tanpa merusak /system
             std::vector<std::string> target_paths = {
                 "/data/adb", 
                 "/system/bin/su", 
@@ -42,7 +36,8 @@ public:
                 "/data/local/tmp", 
                 "/data/magisk", 
                 "/sbin/magisk", 
-                "/data/misc/apatch"
+                "/data/misc/apatch",
+                "/debug_ramdisk"
             };
 
             struct stat st;
@@ -52,11 +47,11 @@ public:
                 }
             }
 
-            // Bersihkan variabel lingkungan
+            // Bersihkan jejak environment variables
             unsetenv("_REJECT_MAGISK_HIDE");
             unsetenv("MAGISK_INJECT_LOG_LEVEL");
             
-            LOGI("SafeMount isolation active for UID: %d", args->uid);
+            LOGI("Surgical isolation active for UID: %d", args->uid);
         }
     }
 
