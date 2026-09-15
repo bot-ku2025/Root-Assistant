@@ -137,12 +137,21 @@ jobs:
 
             ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
 
-            📝 Summary:
-            P1.1 checkpoint berhasil. Build dan ZIP integrity check selesai.
-            SHA256: ${{ env.ZIP_SHA256 }}
-            ZIP Size: ${{ env.ZIP_SIZE }} bytes
-            Infrastruktur operasional yang ada tetap dipertahankan.
+            📝 SUMMARY
 
+            🔐 Checkpoint: P1.1 Build & ZIP Integrity
+
+            📦 ZIP File:
+            ${{ env.ZIP_NAME }}
+
+            🔑 SHA256:
+            ${{ env.ZIP_SHA256 }}
+
+            📏 ZIP Size:
+            ${{ env.ZIP_SIZE }} bytes
+
+            🛡️ Infrastructure:
+            Existing infrastructure tetap dipertahankan.
 
       - name: Send Telegram Notification (Failure with Error Log)
         if: always() && (env.build_status == 'FAILURE' || failure())
