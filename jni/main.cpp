@@ -7,6 +7,11 @@ public:
         this->api = api;
     }
 
+    void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
+        if (!api || !args) return;
+        api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
+    }
+
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
         if (!api || !args)
             return;
