@@ -144,6 +144,41 @@ jobs:
             🛡️ Infrastructure:
             Existing infrastructure tetap dipertahankan.
 
+      - name: Analyze Build Root Cause
+        if: always() && env.build_status == 'FAILURE'
+        continue-on-error: true
+        run: |
+          LOG="jni/build_error.log"
+          ROOT_ERROR=$(grep -iE 'fatal error:|error:|undefined reference|no such file|permission denied|command not found' "$LOG" | grep -viE 'make:|recipe for target|collect2: error: ld returned' | head -n 1 || true)
+          if [ -z "$ROOT_ERROR" ]; then
+            ROOT_ERROR="Root cause tidak dapat ditentukan otomatis."
+            ERROR_POINT="Compile"
+            ERROR_DETAIL="Tidak ditemukan pola error primer yang cukup kuat pada log build."
+          elif echo "$ROOT_ERROR" | grep -qi 'undefined reference'; then
+            ERROR_POINT="Linking"
+            ERROR_DETAIL="Symbol atau function yang dibutuhkan tidak ditemukan saat linking."
+          elif echo "$ROOT_ERROR" | grep -qiE 'fatal error:|no such file'; then
+            ERROR_POINT="Compile"
+            ERROR_DETAIL="Header, file, atau dependency yang dibutuhkan compiler tidak ditemukan."
+          elif echo "$ROOT_ERROR" | grep -qi 'permission denied'; then
+            ERROR_POINT="Build"
+            ERROR_DETAIL="Proses build tidak memiliki izin yang diperlukan."
+          elif echo "$ROOT_ERROR" | grep -qi 'command not found'; then
+            ERROR_POINT="Build"
+            ERROR_DETAIL="Tool atau command yang dibutuhkan tidak tersedia."
+          else
+            ERROR_POINT="Compile"
+            ERROR_DETAIL="Error compiler utama terdeteksi dari log build."
+          fi
+          ROOT_ERROR=$(printf '%s' "$ROOT_ERROR" | tr '
+' '  ' | cut -c1-500)
+          printf 'error_point=%s
+' "$ERROR_POINT" >> "$GITHUB_ENV"
+          printf 'error_detail=%s
+' "$ERROR_DETAIL" >> "$GITHUB_ENV"
+          printf 'root_cause=%s
+' "$ROOT_ERROR" >> "$GITHUB_ENV"
+
       - name: Send Telegram Notification (Failure with Error Log)
         if: always() && (env.build_status == 'FAILURE' || failure())
         uses: appleboy/telegram-action@master
@@ -169,8 +204,18 @@ jobs:
             • Package: ⏭️ NOT RUN
             • Release: ❌ NOT CREATED
 
-            ⚠️ LOG ERROR C++:
-            ${{ env.error_details }}
+              🎯 ANALISA ERROR UTAMA
+
+              ❌ Titik gagal: ${{ env.error_point }}
+
+              🔎 Root Cause:
+              `${{ env.root_cause }}`
+
+              📍 Detail:
+              ${{ env.error_detail }}
+
+              🎯 Error terpusat:
+              Kandidat error primer dipilih dari log build tanpa mengubah status build.
 
             📝 Action:
             Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
