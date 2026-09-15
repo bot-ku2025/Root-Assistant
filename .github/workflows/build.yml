@@ -124,7 +124,7 @@ jobs:
 
             Status: ✅ PASS — Build & ZIP Checkpoint
 
-            📦 File: *${{ env.ZIP_NAME }}*
+            📦 File: **Root-Assistant-PHASE5-P1.1.zip**
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
@@ -140,9 +140,6 @@ jobs:
             📝 SUMMARY
 
             🔐 Checkpoint: P1.1 Build & ZIP Integrity
-
-            📦 ZIP File:
-            ${{ env.ZIP_NAME }}
 
             🔑 SHA256:
             ${{ env.ZIP_SHA256 }}
