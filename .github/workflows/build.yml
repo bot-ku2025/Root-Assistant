@@ -174,15 +174,15 @@ jobs:
           message: |
             🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
 
-            📍 Phase: PHASE 5 — P1 Foundation
-            🔧 Step: P1.3
+            📍 Phase: ${{ env.RA_PHASE }}
+            🔧 Step: ${{ env.RA_STEP }}
 
             Status: ❌ FAILED
 
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
-            📌 Commit: `${{ github.sha }}`
-            📌 Topik Update: ${{ github.event.head_commit.message }}
-            ⏰ Waktu Gagal: ${{ github.run_started_at }}
+            📌 Commit: `${{ env.COMMIT_SHA }}`
+            📌 Topik Update: ${{ env.COMMIT_MSG }}
+            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
 
             📊 RESULT
             • Compile: ${{ steps.compile.outcome }}
