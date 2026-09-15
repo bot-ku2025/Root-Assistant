@@ -80,7 +80,7 @@ jobs:
             cp libs/arm64-v8a/*.so zygisk/arm64-v8a.so
           fi
           
-          ZIP_NAME="Root-Assistant-${{ env.VERSION_TAG }}.zip"
+          ZIP_NAME="Root-Assistant-PHASE5-P1.1.zip"
           # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
           zip -r "build_output/$ZIP_NAME" module.prop service.sh sepolicy.rule zygisk/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
@@ -124,7 +124,7 @@ jobs:
 
             Status: ✅ PASS — Build & ZIP Checkpoint
 
-            📦 File: *Root-Assistant-${{ env.VERSION_TAG }}*
+            📦 File: *${{ env.ZIP_NAME }}*
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
