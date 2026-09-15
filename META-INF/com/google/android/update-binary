@@ -23,6 +23,7 @@ fi
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" 'customize.sh' -d "$TMPDIR" >&2
 unzip -o "$ZIPFILE" 'module.prop' -d "$TMPDIR" >&2
+unzip -o "$ZIPFILE" 'service.sh' -d "$TMPDIR" 2>/dev/null
 unzip -o "$ZIPFILE" 'sepolicy.rule' -d "$TMPDIR" 2>/dev/null
 unzip -o "$ZIPFILE" 'zygisk/*' -d "$TMPDIR" 2>/dev/null
 
