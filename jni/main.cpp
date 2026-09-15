@@ -9,14 +9,10 @@ public:
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
         if (args && args->uid >= 10000) {
-            // SENJATA MUTLAK: Hapus modul Root-Assistant dari RAM seketika.
-            // Tidak ada LOGI agar tidak meninggalkan jejak di logcat (stealth).
+            // Bersihkan memori aplikasi dari jejak modul seketika tanpa log/crash
             api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
         }
     }
-
-    // FUNGSI postAppSpecialize DIHAPUS TOTAL!
-    // Membiarkan fungsi ini ada saat DLCLOSE aktif adalah penyebab crash murni.
 
 private:
     zygisk::Api *api;
