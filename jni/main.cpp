@@ -24,6 +24,11 @@ public:
         }
     }
 
+    void preServerSpecialize(zygisk::ServerSpecializeArgs *args) override {
+        if (!api || !args) return;
+        RA_LOG("Root Assistant server runtime initialized");
+    }
+
 private:
     zygisk::Api *api = nullptr;
 };
