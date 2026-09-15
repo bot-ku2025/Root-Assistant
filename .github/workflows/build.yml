@@ -38,7 +38,7 @@ jobs:
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "RA_PHASE=PHASE 5 — P1 Foundation" >> $GITHUB_ENV
-          echo "RA_STEP=P1.0 — Telegram Development Output" >> $GITHUB_ENV
+          echo "RA_STEP=P1.1 — Build ZIP Integrity Checkpoint" >> $GITHUB_ENV
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
@@ -82,8 +82,32 @@ jobs:
           
           ZIP_NAME="Root-Assistant-${{ env.VERSION_TAG }}.zip"
           # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
-          zip -r "build_output/$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule zygisk/
+          zip -r "build_output/$ZIP_NAME" module.prop service.sh sepolicy.rule zygisk/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+
+      - name: Verify ZIP Integrity
+        if: env.build_status == 'SUCCESS'
+        run: |
+          set -e
+
+          ZIP="build_output/${ZIP_NAME}"
+
+          test -s "$ZIP"
+          unzip -tq "$ZIP"
+
+          unzip -l "$ZIP" | grep -q "module.prop"
+          unzip -l "$ZIP" | grep -q "service.sh"
+          unzip -l "$ZIP" | grep -q "sepolicy.rule"
+          unzip -l "$ZIP" | grep -q "zygisk/arm64-v8a.so"
+
+          test -s zygisk/arm64-v8a.so
+
+          SHA256=$(sha256sum "$ZIP" | cut -d' ' -f1)
+          ZIP_SIZE=$(stat -c%s "$ZIP")
+
+          echo "ZIP_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "ZIP_SIZE=$ZIP_SIZE" >> $GITHUB_ENV
 
       - name: Send Telegram Notification (Success)
         if: env.build_status == 'SUCCESS'
@@ -98,7 +122,7 @@ jobs:
             📍 Phase: ${{ env.RA_PHASE }}
             🔧 Step: ${{ env.RA_STEP }}
 
-            Status: ✅ PASS — Build & Release
+            Status: ✅ PASS — Build & ZIP Checkpoint
 
             📦 File: *Root-Assistant-${{ env.VERSION_TAG }}*
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
@@ -108,13 +132,15 @@ jobs:
             📊 Result:
             • Compile: ✅ PASS
             • Package: ✅ PASS
-            • Release: ✅ PASS
+            • ZIP Integrity: ✅ PASS
             • Existing Infrastructure: ✅ Preserved
 
             ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
 
             📝 Summary:
-            P1 checkpoint berhasil. Build dan release selesai.
+            P1.1 checkpoint berhasil. Build dan ZIP integrity check selesai.
+            SHA256: ${{ env.ZIP_SHA256 }}
+            ZIP Size: ${{ env.ZIP_SIZE }} bytes
             Infrastruktur operasional yang ada tetap dipertahankan.
 
 
