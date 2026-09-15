@@ -32,32 +32,15 @@ jobs:
           mkdir -p jni
           wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
 
-      - name: Initialize Failure-Safe Metadata
-        id: metadata
-        if: always()
-        run: |
-          echo "commit_short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          echo "commit_msg=$(git log -1 --pretty=%s)" >> "$GITHUB_OUTPUT"
-          echo "branch=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          echo "run_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          echo "build_time=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> "$GITHUB_OUTPUT"
-
-
       - name: Capture Git Info & Sanitize Version
-        id: capture
         run: |
-          set -e
-
-          COMMIT_MSG=$(git log -1 --pretty=%s)
+          echo "COMMIT_MSG=$(git log -1 --pretty=%s)" >> $GITHUB_ENV
           CHECKPOINT=$(printf "%s" "$COMMIT_MSG" | grep -oE "P[0-9]+(\.[0-9]+)+" | head -n 1 || true)
-
           if [ -z "$CHECKPOINT" ]; then
-            echo "ERROR: checkpoint tidak ditemukan pada commit message: $COMMIT_MSG"
+            echo "ERROR: checkpoint tidak ditemukan pada commit message"
             exit 1
           fi
-
           STEP_TITLE=$(printf "%s" "$COMMIT_MSG" | sed -E "s/^[^:]+:[[:space:]]*//; s/[[:space:]]+P[0-9]+(\.[0-9]+)+[[:space:]]*$//")
-
           if [[ "$CHECKPOINT" == P1.* ]]; then
             RA_PHASE="PHASE 5 — P1 Foundation"
             RA_STEP="$CHECKPOINT — $STEP_TITLE"
@@ -67,33 +50,19 @@ jobs:
             RA_STEP="$CHECKPOINT — $STEP_TITLE"
             ZIP_NAME="Root-Assistant-${CHECKPOINT}.zip"
           fi
-
-          echo "COMMIT_MSG=$COMMIT_MSG" >> "$GITHUB_ENV"
-          echo "RA_PHASE=$RA_PHASE" >> "$GITHUB_ENV"
-          echo "RA_STEP=$RA_STEP" >> "$GITHUB_ENV"
-          echo "COMMIT_SHA=${{ steps.metadata.outputs.commit_short }}" >> "$GITHUB_ENV"
-          echo "BUILD_TIME=${{ steps.metadata.outputs.build_time }}" >> "$GITHUB_ENV"
-          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
-
+          echo "RA_PHASE=$RA_PHASE" >> $GITHUB_ENV
+          echo "RA_STEP=$RA_STEP" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           if [ -f module.prop ]; then
-            RAW_VERSION=$(grep "^version=" module.prop | cut -d"=" -f2 | tr -d "\r")
-            CLEAN_VERSION=$(echo "$RAW_VERSION" | tr " " "-" | sed "s/[^a-zA-Z0-9._-]/-/g")
-            echo "VERSION_TAG=${CLEAN_VERSION:-v3.0-Ultimate}" >> "$GITHUB_ENV"
+            RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
+            CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
+            echo "VERSION_TAG=${CLEAN_VERSION:-v3.0-Ultimate}" >> $GITHUB_ENV
           else
-            echo "VERSION_TAG=v3.0-Ultimate" >> "$GITHUB_ENV"
+            echo "VERSION_TAG=v3.0-Ultimate" >> $GITHUB_ENV
           fi
 
       - name: Build with NDK & Capture Error Log
-        id: compile
-        continue-on-error: true
-        run: |
-          set +e
-          cd jni
-          ndk-build 2> build_error.log
-          BUILD_RC=$?
-          cat build_error.log
-          exit $BUILD_RC
-
         id: compile
         continue-on-error: true
         run: |
@@ -104,29 +73,16 @@ jobs:
       - name: Check Build Status
         id: check_status
         run: |
-          if [ "${{ steps.compile.outcome }}" != "success" ]; then
-            echo "build_status=FAILURE" >> "$GITHUB_ENV"
-            if [ -s jni/build_error.log ]; then
-              ERROR_MSG=$(tail -n 25 jni/build_error.log | tr "\n" " " | sed "s/\"/'/g")
-              echo "error_details=$ERROR_MSG" >> "$GITHUB_ENV"
-            else
-              echo "error_details=NDK build failed without a captured compiler error log." >> "$GITHUB_ENV"
-            fi
+          if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
+            echo "build_status=FAILURE" >> $GITHUB_ENV
+            ERROR_MSG=$(tail -n 25 jni/build_error.log | tr '\n' ' ' | sed 's/"/'\''/g')
+            echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
             exit 1
+          else
+            echo "build_status=SUCCESS" >> $GITHUB_ENV
           fi
-
-          if [ -s jni/build_error.log ] && grep -qi "error" jni/build_error.log; then
-            echo "build_status=FAILURE" >> "$GITHUB_ENV"
-            ERROR_MSG=$(tail -n 25 jni/build_error.log | tr "\n" " " | sed "s/\"/'/g")
-            echo "error_details=$ERROR_MSG" >> "$GITHUB_ENV"
-            exit 1
-          fi
-
-          echo "build_status=SUCCESS" >> "$GITHUB_ENV"
 
       - name: Package Module (Zygisk Standard Structure)
-        id: package
-
         if: env.build_status == 'SUCCESS'
         run: |
           mkdir -p build_output
@@ -146,7 +102,6 @@ jobs:
 
 
       - name: Verify ZIP Integrity
-        id: verify_zip
         if: env.build_status == 'SUCCESS'
         run: |
           set -e
@@ -211,7 +166,6 @@ jobs:
             Existing infrastructure tetap dipertahankan.
 
       - name: Send Telegram Notification — FAILURE REPORT
-        id: failure_report
         if: always() && failure()
         uses: appleboy/telegram-action@master
         with:
@@ -223,40 +177,40 @@ jobs:
             ╚══════════════════════════════════╝
 
             📍 CHECKPOINT
-            • Phase      : ${{ env.RA_PHASE || 'UNDETECTED' }}
-            • Step       : ${{ env.RA_STEP || 'UNDETECTED' }}
+            • Phase      : ${{ env.RA_PHASE || 'PHASE 5 — P1 Foundation' }}
+            • Step       : ${{ env.RA_STEP || 'P1.3 — Checkpoint Detection' }}
 
             🆔 RUN IDENTITY
             • Workflow   : Build Zygisk Module
-            • Run Number : #${{ steps.metadata.outputs.run_number }}
-            • Commit     : `${{ env.COMMIT_SHA || steps.metadata.outputs.commit_short }}`
-            • Commit Msg : ${{ env.COMMIT_MSG || steps.metadata.outputs.commit_msg }}
-            • Branch     : ${{ steps.metadata.outputs.branch }}
+            • Run Number : #${{ github.run_number }}
+            • Commit     : `${{ env.COMMIT_SHA || 'unknown' }}`
+            • Commit Msg : ${{ env.COMMIT_MSG || github.event.head_commit.message }}
+            • Branch     : ${{ github.ref_name }}
 
             ⏰ TIME
-            • Failed At  : ${{ env.BUILD_TIME || steps.metadata.outputs.build_time }} WIB
+            • Failed At  : ${{ env.BUILD_TIME || 'not captured' }} WIB
 
             ──────────────────────────────────
             📊 PIPELINE STATUS
             ──────────────────────────────────
 
             1️⃣ Metadata Initialization
-               Status : ${{ steps.metadata.outcome }}
+               Status : ${{ steps.metadata.outcome || 'not available' }}
 
             2️⃣ Checkpoint Detection
-               Status : ${{ steps.capture.outcome }}
+               Status : ${{ steps.capture.outcome || 'not available' }}
 
             3️⃣ Native C++ Compile
-               Status : ${{ steps.compile.outcome }}
+               Status : ${{ steps.compile.outcome || 'not available' }}
 
             4️⃣ Build Status Check
-               Status : ${{ steps.check_status.outcome }}
+               Status : ${{ steps.check_status.outcome || 'not available' }}
 
             5️⃣ Module Package
-               Status : ${{ steps.package.outcome }}
+               Status : ${{ env.ZIP_NAME && 'prepared / attempted' || 'not run' }}
 
             6️⃣ ZIP Integrity
-               Status : ${{ steps.verify_zip.outcome }}
+               Status : ${{ env.ZIP_SHA256 && 'verified' || 'not run' }}
 
             7️⃣ Release
                Status : NOT CREATED
@@ -265,22 +219,19 @@ jobs:
             🔎 FAILURE ANALYSIS
             ──────────────────────────────────
 
-            • Metadata       : ${{ steps.metadata.outcome }}
-            • Checkpoint     : ${{ steps.capture.outcome }}
-            • Compile        : ${{ steps.compile.outcome }}
-            • Build Check    : ${{ steps.check_status.outcome }}
-            • Package        : ${{ steps.package.outcome }}
-            • ZIP Integrity  : ${{ steps.verify_zip.outcome }}
+            • Metadata       : ${{ steps.metadata.outcome || 'unknown' }}
+            • Checkpoint     : ${{ steps.capture.outcome || 'unknown' }}
+            • Compile        : ${{ steps.compile.outcome || 'unknown' }}
+            • Build Check    : ${{ steps.check_status.outcome || 'unknown' }}
 
             ⚠️ FAILURE POINT
-            The first step with status FAILED is the failure point.
-            Steps marked SKIPPED were not reached because an earlier stage failed.
+            The first failed workflow stage must be determined from the step status above.
 
             ──────────────────────────────────
             ⚠️ C++ ERROR LOG
             ──────────────────────────────────
 
-            ${{ env.error_details || 'No C++ error log: pipeline failed before compiler diagnostics were produced.' }}
+            ${{ env.error_details || 'No C++ error log available. Workflow failed before C++ error_details was generated.' }}
 
             ──────────────────────────────────
             📦 BUILD OUTPUT
@@ -307,4 +258,3 @@ jobs:
             ╔══════════════════════════════════╗
             ║  END OF FAILURE REPORT           ║
             ╚══════════════════════════════════╝
-
