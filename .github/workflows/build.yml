@@ -32,40 +32,13 @@ jobs:
           mkdir -p jni
           wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
 
-      - name: Initialize Failure-Safe Metadata
-        id: metadata
-        if: always()
-        run: |
-          echo "commit_short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          echo "commit_msg=$(git log -1 --pretty=%s)" >> "$GITHUB_OUTPUT"
-          echo "branch=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          echo "run_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          echo "build_time=$(TZ=Asia/Jakarta date "+%H:%M:%S")" >> "$GITHUB_OUTPUT"
-
-
       - name: Capture Git Info & Sanitize Version
-        id: capture
         run: |
-          COMMIT_MSG=$(git log -1 --pretty=%s)
-          CHECKPOINT=$(printf "%s" "$COMMIT_MSG" | grep -oE "P[0-9]+(\.[0-9]+)+" | head -n 1 || true)
-          if [ -z "$CHECKPOINT" ]; then
-            echo "ERROR: checkpoint tidak ditemukan pada commit message"
-            exit 1
-          fi
-          STEP_TITLE=$(printf "%s" "$COMMIT_MSG" | sed -E "s/^[^:]+:[[:space:]]*//; s/[[:space:]]+P[0-9]+(\.[0-9]+)+[[:space:]]*$//")
-          if [[ "$CHECKPOINT" == P1.* ]]; then
-            RA_PHASE="PHASE 5 — P1 Foundation"
-            RA_STEP="$CHECKPOINT — $STEP_TITLE"
-            ZIP_NAME="Root-Assistant-PHASE5-${CHECKPOINT}.zip"
-          else
-            RA_PHASE="AUTO — $CHECKPOINT"
-            RA_STEP="$CHECKPOINT — $STEP_TITLE"
-            ZIP_NAME="Root-Assistant-${CHECKPOINT}.zip"
-          fi
-          echo "RA_PHASE=$RA_PHASE" >> $GITHUB_ENV
-          echo "RA_STEP=$RA_STEP" >> $GITHUB_ENV
-          echo "COMMIT_SHA=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
+          echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
+          echo "RA_PHASE=PHASE 5 — P1 Foundation" >> $GITHUB_ENV
+          echo "RA_STEP=P1.1 — Build ZIP Integrity Checkpoint" >> $GITHUB_ENV
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
@@ -107,11 +80,10 @@ jobs:
             cp libs/arm64-v8a/*.so zygisk/arm64-v8a.so
           fi
           
-          # ZIP_NAME ditentukan otomatis oleh P1.3
+          ZIP_NAME="Root-Assistant-PHASE5-P1.1.zip"
           # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
           zip -r "build_output/$ZIP_NAME" module.prop service.sh sepolicy.rule zygisk/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-          test -f "build_output/$ZIP_NAME" && echo "TELEGRAM_DOCUMENT=build_output/$ZIP_NAME" >> "$GITHUB_ENV"
 
 
       - name: Verify ZIP Integrity
@@ -143,7 +115,7 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          document: ${{ env.TELEGRAM_DOCUMENT }}
+          document: build_output/${{ env.ZIP_NAME }}
           message: |
             🚀 ROOT ASSISTANT DEVELOPMENT UPDATE
 
@@ -152,7 +124,7 @@ jobs:
 
             Status: ✅ PASS — Build & ZIP Checkpoint
 
-            📦 File: **${{ env.ZIP_NAME }}**
+            📦 File: **Root-Assistant-PHASE5-P1.1.zip**
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
@@ -167,7 +139,7 @@ jobs:
 
             📝 SUMMARY
 
-            🔐 Checkpoint: ${{ env.RA_STEP }}
+            🔐 Checkpoint: P1.1 Build & ZIP Integrity
 
             🔑 SHA256:
             ${{ env.ZIP_SHA256 }}
@@ -178,96 +150,33 @@ jobs:
             🛡️ Infrastructure:
             Existing infrastructure tetap dipertahankan.
 
-      - name: Send Telegram Notification — FAILURE REPORT
-        if: always() && failure()
+      - name: Send Telegram Notification (Failure with Error Log)
+        if: always() && (env.build_status == 'FAILURE' || failure())
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ╔══════════════════════════════════╗
-            ║  🚨 ROOT ASSISTANT — FAILURE     ║
-            ╚══════════════════════════════════╝
+            🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
 
-            📍 CHECKPOINT
-            • Phase      : ${{ env.RA_PHASE || 'PHASE 5 — P1 Foundation' }}
-            • Step       : ${{ env.RA_STEP || 'P1.3 — Checkpoint Detection' }}
+            📍 Phase: ${{ env.RA_PHASE }}
+            🔧 Step: ${{ env.RA_STEP }}
 
-            🆔 RUN IDENTITY
-            • Workflow   : Build Zygisk Module
-            • Run Number : #${{ github.run_number }}
-            • Commit     : `${{ env.COMMIT_SHA || 'unknown' }}`
-            • Commit Msg : ${{ env.COMMIT_MSG || github.event.head_commit.message }}
-            • Branch     : ${{ github.ref_name }}
+            Status: ❌ FAILED
 
-            ⏰ TIME
-            • Failed At  : ${{ env.BUILD_TIME || 'not captured' }} WIB
+            📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+            📌 Commit: `${{ env.COMMIT_SHA }}`
+            📌 Topik Update: ${{ env.COMMIT_MSG }}
+            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
 
-            ──────────────────────────────────
-            📊 PIPELINE STATUS
-            ──────────────────────────────────
+            📊 Result:
+            • Compile: ❌ FAILED
+            • Static Check: ⏭️ NOT RUN
+            • Package: ⏭️ NOT RUN
+            • Release: ❌ NOT CREATED
 
-            1️⃣ Metadata Initialization
-               Status : ${{ steps.metadata.outcome || 'not available' }}
+            ⚠️ LOG ERROR C++:
+            ${{ env.error_details }}
 
-            2️⃣ Checkpoint Detection
-               Status : ${{ steps.capture.outcome || 'not available' }}
-
-            3️⃣ Native C++ Compile
-               Status : ${{ steps.compile.outcome || 'not available' }}
-
-            4️⃣ Build Status Check
-               Status : ${{ steps.check_status.outcome || 'not available' }}
-
-            5️⃣ Module Package
-               Status : ${{ env.ZIP_NAME && 'prepared / attempted' || 'not run' }}
-
-            6️⃣ ZIP Integrity
-               Status : ${{ env.ZIP_SHA256 && 'verified' || 'not run' }}
-
-            7️⃣ Release
-               Status : NOT CREATED
-
-            ──────────────────────────────────
-            🔎 FAILURE ANALYSIS
-            ──────────────────────────────────
-
-            • Metadata       : ${{ steps.metadata.outcome || 'unknown' }}
-            • Checkpoint     : ${{ steps.capture.outcome || 'unknown' }}
-            • Compile        : ${{ steps.compile.outcome || 'unknown' }}
-            • Build Check    : ${{ steps.check_status.outcome || 'unknown' }}
-
-            ⚠️ FAILURE POINT
-            The first failed workflow stage must be determined from the step status above.
-
-            ──────────────────────────────────
-            ⚠️ C++ ERROR LOG
-            ──────────────────────────────────
-
-            ${{ env.error_details || 'No C++ error log available. Workflow failed before C++ error_details was generated.' }}
-
-            ──────────────────────────────────
-            📦 BUILD OUTPUT
-            ──────────────────────────────────
-
-            • ZIP Name       : ${{ env.ZIP_NAME || 'not generated' }}
-            • ZIP SHA256     : ${{ env.ZIP_SHA256 || 'not generated' }}
-            • ZIP Size       : ${{ env.ZIP_SIZE || 'not generated' }} bytes
-
-            ──────────────────────────────────
-            🛡️ INFRASTRUCTURE
-            ──────────────────────────────────
-
-            Existing Root-Assistant infrastructure remains preserved.
-            No engine rollback is performed automatically.
-
-            ──────────────────────────────────
-            📝 ACTION
-            ──────────────────────────────────
-
-            Build dihentikan pada tahap yang gagal.
-            Perbaiki failure point sebelum checkpoint berikutnya.
-
-            ╔══════════════════════════════════╗
-            ║  END OF FAILURE REPORT           ║
-            ╚══════════════════════════════════╝
+            📝 Action:
+            Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
