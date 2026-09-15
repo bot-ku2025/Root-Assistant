@@ -1,3 +1,5 @@
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <android/log.h>
 #include "zygisk.hpp"
 
@@ -13,10 +15,10 @@ public:
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
         if (args && args->uid >= 10000) {
-            // 1. Perintahkan KernelSU/Magisk daemon untuk melakukan Unmount jalur root secara aman (bebas crash)
+            // Senjata 1: Perintahkan Zygisk unmount secara aman tanpa Seccomp Crash
             api->setOption(zygisk::Option::FORCE_DENYLIST_UNMOUNT);
             
-            // 2. Cabut/Hapus modul Root-Assistant dari memori aplikasi ini agar tidak terdeteksi detektor memori
+            // Hapus modul dari memori (Stealth)
             api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
             
             LOGI("Native Zygisk Delegation active for UID: %d", args->uid);
@@ -24,7 +26,7 @@ public:
     }
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
-        // KOSONGKAN! Jangan gunakan syscall unshare/umount2 di sini karena memicu Seccomp FATAL EXCEPTION.
+        // Biarkan kosong agar tidak memicu Seccomp FATAL EXCEPTION
     }
 
 private:
