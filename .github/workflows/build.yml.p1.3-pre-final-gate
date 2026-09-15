@@ -1,0 +1,272 @@
+name: Build Zygisk Module
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download & Setup Android NDK Directly
+        run: |
+          echo "Downloading Android NDK r26b..."
+          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
+          echo "Extracting NDK..."
+          unzip -q android-ndk-r26b-linux.zip
+          echo "NDK_ROOT=$PWD/android-ndk-r26b" >> $GITHUB_ENV
+          echo "$PWD/android-ndk-r26b" >> $GITHUB_PATH
+
+      - name: Download Zygisk API Header
+        run: |
+          mkdir -p jni
+          wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
+
+      - name: Initialize Failure-Safe Metadata
+        id: metadata
+        if: always()
+        run: |
+          echo "commit_short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "commit_msg=$(git log -1 --pretty=%s)" >> "$GITHUB_OUTPUT"
+          echo "branch=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "run_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "build_time=$(TZ=Asia/Jakarta date "+%H:%M:%S")" >> "$GITHUB_OUTPUT"
+
+
+      - name: Capture Git Info & Sanitize Version
+        id: capture
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          CHECKPOINT=$(printf "%s" "$COMMIT_MSG" | grep -oE "P[0-9]+(\.[0-9]+)+" | head -n 1 || true)
+          if [ -z "$CHECKPOINT" ]; then
+            echo "ERROR: checkpoint tidak ditemukan pada commit message"
+            exit 1
+          fi
+          STEP_TITLE=$(printf "%s" "$COMMIT_MSG" | sed -E "s/^[^:]+:[[:space:]]*//; s/[[:space:]]+P[0-9]+(\.[0-9]+)+[[:space:]]*$//")
+          if [[ "$CHECKPOINT" == P1.* ]]; then
+            RA_PHASE="PHASE 5 — P1 Foundation"
+            RA_STEP="$CHECKPOINT — $STEP_TITLE"
+            ZIP_NAME="Root-Assistant-PHASE5-${CHECKPOINT}.zip"
+          else
+            RA_PHASE="AUTO — $CHECKPOINT"
+            RA_STEP="$CHECKPOINT — $STEP_TITLE"
+            ZIP_NAME="Root-Assistant-${CHECKPOINT}.zip"
+          fi
+          echo "RA_PHASE=$RA_PHASE" >> $GITHUB_ENV
+          echo "RA_STEP=$RA_STEP" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
+          echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
+          if [ -f module.prop ]; then
+            RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
+            CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
+            echo "VERSION_TAG=${CLEAN_VERSION:-v3.0-Ultimate}" >> $GITHUB_ENV
+          else
+            echo "VERSION_TAG=v3.0-Ultimate" >> $GITHUB_ENV
+          fi
+
+      - name: Build with NDK & Capture Error Log
+        id: compile
+        continue-on-error: true
+        run: |
+          cd jni
+          ndk-build 2> build_error.log
+          cat build_error.log
+
+      - name: Check Build Status
+        id: check_status
+        run: |
+          if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
+            echo "build_status=FAILURE" >> $GITHUB_ENV
+            ERROR_MSG=$(tail -n 25 jni/build_error.log | tr '\n' ' ' | sed 's/"/'\''/g')
+            echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
+            exit 1
+          else
+            echo "build_status=SUCCESS" >> $GITHUB_ENV
+          fi
+
+      - name: Package Module (Zygisk Standard Structure)
+        if: env.build_status == 'SUCCESS'
+        run: |
+          mkdir -p build_output
+          mkdir -p zygisk
+          
+          # Pindahkan dan sesuaikan nama .so agar terbaca oleh Zygisk daemon
+          if [ -f obj/local/arm64-v8a/librootassistant.so ]; then
+            cp obj/local/arm64-v8a/librootassistant.so zygisk/arm64-v8a.so
+          elif [ -f libs/arm64-v8a/*.so ]; then
+            cp libs/arm64-v8a/*.so zygisk/arm64-v8a.so
+          fi
+          
+          # ZIP_NAME ditentukan otomatis oleh P1.3
+          # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
+          zip -r "build_output/$ZIP_NAME" module.prop service.sh sepolicy.rule zygisk/
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+
+      - name: Verify ZIP Integrity
+        if: env.build_status == 'SUCCESS'
+        run: |
+          set -e
+
+          ZIP="build_output/${ZIP_NAME}"
+
+          test -s "$ZIP"
+          unzip -tq "$ZIP"
+
+          unzip -l "$ZIP" | grep -q "module.prop"
+          unzip -l "$ZIP" | grep -q "service.sh"
+          unzip -l "$ZIP" | grep -q "sepolicy.rule"
+          unzip -l "$ZIP" | grep -q "zygisk/arm64-v8a.so"
+
+          test -s zygisk/arm64-v8a.so
+
+          SHA256=$(sha256sum "$ZIP" | cut -d' ' -f1)
+          ZIP_SIZE=$(stat -c%s "$ZIP")
+
+          echo "ZIP_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "ZIP_SIZE=$ZIP_SIZE" >> $GITHUB_ENV
+
+      - name: Send Telegram Notification (Success)
+        if: env.build_status == 'SUCCESS'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: build_output/${{ env.ZIP_NAME }}
+          message: |
+            🚀 ROOT ASSISTANT DEVELOPMENT UPDATE
+
+            📍 Phase: ${{ env.RA_PHASE }}
+            🔧 Step: ${{ env.RA_STEP }}
+
+            Status: ✅ PASS — Build & ZIP Checkpoint
+
+            📦 File: **${{ env.ZIP_NAME }}**
+            🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
+            📌 Commit: `${{ env.COMMIT_SHA }}`
+            📌 Topik Update: ${{ env.COMMIT_MSG }}
+
+            📊 Result:
+            • Compile: ✅ PASS
+            • Package: ✅ PASS
+            • ZIP Integrity: ✅ PASS
+            • Existing Infrastructure: ✅ Preserved
+
+            ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
+
+            📝 SUMMARY
+
+            🔐 Checkpoint: ${{ env.RA_STEP }}
+
+            🔑 SHA256:
+            ${{ env.ZIP_SHA256 }}
+
+            📏 ZIP Size:
+            ${{ env.ZIP_SIZE }} bytes
+
+            🛡️ Infrastructure:
+            Existing infrastructure tetap dipertahankan.
+
+      - name: Send Telegram Notification — FAILURE REPORT
+        if: always() && failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ╔══════════════════════════════════╗
+            ║  🚨 ROOT ASSISTANT — FAILURE     ║
+            ╚══════════════════════════════════╝
+
+            📍 CHECKPOINT
+            • Phase      : ${{ env.RA_PHASE || 'PHASE 5 — P1 Foundation' }}
+            • Step       : ${{ env.RA_STEP || 'P1.3 — Checkpoint Detection' }}
+
+            🆔 RUN IDENTITY
+            • Workflow   : Build Zygisk Module
+            • Run Number : #${{ github.run_number }}
+            • Commit     : `${{ env.COMMIT_SHA || 'unknown' }}`
+            • Commit Msg : ${{ env.COMMIT_MSG || github.event.head_commit.message }}
+            • Branch     : ${{ github.ref_name }}
+
+            ⏰ TIME
+            • Failed At  : ${{ env.BUILD_TIME || 'not captured' }} WIB
+
+            ──────────────────────────────────
+            📊 PIPELINE STATUS
+            ──────────────────────────────────
+
+            1️⃣ Metadata Initialization
+               Status : ${{ steps.metadata.outcome || 'not available' }}
+
+            2️⃣ Checkpoint Detection
+               Status : ${{ steps.capture.outcome || 'not available' }}
+
+            3️⃣ Native C++ Compile
+               Status : ${{ steps.compile.outcome || 'not available' }}
+
+            4️⃣ Build Status Check
+               Status : ${{ steps.check_status.outcome || 'not available' }}
+
+            5️⃣ Module Package
+               Status : ${{ env.ZIP_NAME && 'prepared / attempted' || 'not run' }}
+
+            6️⃣ ZIP Integrity
+               Status : ${{ env.ZIP_SHA256 && 'verified' || 'not run' }}
+
+            7️⃣ Release
+               Status : NOT CREATED
+
+            ──────────────────────────────────
+            🔎 FAILURE ANALYSIS
+            ──────────────────────────────────
+
+            • Metadata       : ${{ steps.metadata.outcome || 'unknown' }}
+            • Checkpoint     : ${{ steps.capture.outcome || 'unknown' }}
+            • Compile        : ${{ steps.compile.outcome || 'unknown' }}
+            • Build Check    : ${{ steps.check_status.outcome || 'unknown' }}
+
+            ⚠️ FAILURE POINT
+            The first failed workflow stage must be determined from the step status above.
+
+            ──────────────────────────────────
+            ⚠️ C++ ERROR LOG
+            ──────────────────────────────────
+
+            ${{ env.error_details || 'No C++ error log available. Workflow failed before C++ error_details was generated.' }}
+
+            ──────────────────────────────────
+            📦 BUILD OUTPUT
+            ──────────────────────────────────
+
+            • ZIP Name       : ${{ env.ZIP_NAME || 'not generated' }}
+            • ZIP SHA256     : ${{ env.ZIP_SHA256 || 'not generated' }}
+            • ZIP Size       : ${{ env.ZIP_SIZE || 'not generated' }} bytes
+
+            ──────────────────────────────────
+            🛡️ INFRASTRUCTURE
+            ──────────────────────────────────
+
+            Existing Root-Assistant infrastructure remains preserved.
+            No engine rollback is performed automatically.
+
+            ──────────────────────────────────
+            📝 ACTION
+            ──────────────────────────────────
+
+            Build dihentikan pada tahap yang gagal.
+            Perbaiki failure point sebelum checkpoint berikutnya.
+
+            ╔══════════════════════════════════╗
+            ║  END OF FAILURE REPORT           ║
+            ╚══════════════════════════════════╝
