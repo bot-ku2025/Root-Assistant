@@ -174,24 +174,28 @@ jobs:
           message: |
             🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
 
-            📍 Phase: ${{ env.RA_PHASE }}
-            🔧 Step: ${{ env.RA_STEP }}
+            📍 Phase: PHASE 5 — P1 Foundation
+            🔧 Step: P1.3 — ${{ github.event.head_commit.message }}
 
             Status: ❌ FAILED
 
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
-            📌 Commit: `${{ env.COMMIT_SHA }}`
-            📌 Topik Update: ${{ env.COMMIT_MSG }}
-            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
+            📌 Commit: `${{ github.sha }}`
+            📌 Topik Update: ${{ github.event.head_commit.message }}
+            ⏰ Waktu Gagal: ${{ github.run_started_at }}
 
             📊 Result:
-            • Compile: ❌ FAILED
+            • Checkpoint Detection: ${{ steps.compile.outcome == 'skipped' && '❌ FAILED / NOT REACHED BUILD' || '✅ PASSED' }}
+            • Compile: ${{ steps.compile.outcome == 'failure' && '❌ FAILED' || steps.compile.outcome == 'skipped' && '⏭️ NOT RUN' || '✅ PASSED' }}
             • Static Check: ⏭️ NOT RUN
-            • Package: ⏭️ NOT RUN
+            • Package: ${{ env.build_status == 'SUCCESS' && '✅ PASSED' || '⏭️ NOT RUN' }}
             • Release: ❌ NOT CREATED
 
+            ⚠️ Failure Point:
+            ${{ steps.compile.outcome == 'skipped' && 'Workflow gagal sebelum proses Compile. || 'Build with NDK / Check Build Status' }}
+
             ⚠️ LOG ERROR C++:
-            ${{ env.error_details }}
+            ${{ env.error_details || 'Tidak tersedia — failure terjadi sebelum log C++ dibuat. }}
 
             📝 Action:
             Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
