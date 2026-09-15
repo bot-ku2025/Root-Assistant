@@ -165,38 +165,96 @@ jobs:
             🛡️ Infrastructure:
             Existing infrastructure tetap dipertahankan.
 
-      - name: Send Telegram Notification (Failure with Error Log)
-        if: always() && (env.build_status == 'FAILURE' || failure())
+      - name: Send Telegram Notification — FAILURE REPORT
+        if: always() && failure()
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
+            ╔══════════════════════════════════╗
+            ║  🚨 ROOT ASSISTANT — FAILURE     ║
+            ╚══════════════════════════════════╝
 
-            📍 Phase: ${{ env.RA_PHASE }}
-            🔧 Step: ${{ env.RA_STEP }}
+            📍 CHECKPOINT
+            • Phase      : ${{ env.RA_PHASE || 'PHASE 5 — P1 Foundation' }}
+            • Step       : ${{ env.RA_STEP || 'P1.3 — Checkpoint Detection' }}
 
-            Status: ❌ FAILED
+            🆔 RUN IDENTITY
+            • Workflow   : Build Zygisk Module
+            • Run Number : #${{ github.run_number }}
+            • Commit     : `${{ env.COMMIT_SHA || 'unknown' }}`
+            • Commit Msg : ${{ env.COMMIT_MSG || github.event.head_commit.message }}
+            • Branch     : ${{ github.ref_name }}
 
-            📦 Build Run: Build Hybrid Module #${{ github.run_number }}
-            📌 Commit: `${{ env.COMMIT_SHA }}`
-            📌 Topik Update: ${{ env.COMMIT_MSG }}
-            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
+            ⏰ TIME
+            • Failed At  : ${{ env.BUILD_TIME || 'not captured' }} WIB
 
-            📊 RESULT
-            • Compile: ${{ steps.compile.outcome }}
-            • Build Status Check: ${{ steps.check_status.outcome }}
-            • Package: ${{ env.ZIP_NAME && '✅ COMPLETED' || '⏭️ NOT RUN' }}
-            • ZIP Integrity: ${{ env.ZIP_SHA256 && '✅ PASSED' || '⏭️ NOT RUN' }}
-            • Release: ❌ NOT CREATED
+            ──────────────────────────────────
+            📊 PIPELINE STATUS
+            ──────────────────────────────────
+
+            1️⃣ Metadata Initialization
+               Status : ${{ steps.metadata.outcome || 'not available' }}
+
+            2️⃣ Checkpoint Detection
+               Status : ${{ steps.capture.outcome || 'not available' }}
+
+            3️⃣ Native C++ Compile
+               Status : ${{ steps.compile.outcome || 'not available' }}
+
+            4️⃣ Build Status Check
+               Status : ${{ steps.check_status.outcome || 'not available' }}
+
+            5️⃣ Module Package
+               Status : ${{ env.ZIP_NAME && 'prepared / attempted' || 'not run' }}
+
+            6️⃣ ZIP Integrity
+               Status : ${{ env.ZIP_SHA256 && 'verified' || 'not run' }}
+
+            7️⃣ Release
+               Status : NOT CREATED
+
+            ──────────────────────────────────
+            🔎 FAILURE ANALYSIS
+            ──────────────────────────────────
+
+            • Metadata       : ${{ steps.metadata.outcome || 'unknown' }}
+            • Checkpoint     : ${{ steps.capture.outcome || 'unknown' }}
+            • Compile        : ${{ steps.compile.outcome || 'unknown' }}
+            • Build Check    : ${{ steps.check_status.outcome || 'unknown' }}
 
             ⚠️ FAILURE POINT
-            Compile Step: ${{ steps.compile.outcome }}
-            Build Status Step: ${{ steps.check_status.outcome }}
+            The first failed workflow stage must be determined from the step status above.
 
-            ⚠️ LOG ERROR C++
-            ${{ env.error_details || 'Tidak tersedia — kegagalan terjadi sebelum error C++ berhasil direkam.' }}
+            ──────────────────────────────────
+            ⚠️ C++ ERROR LOG
+            ──────────────────────────────────
 
-            📝 Action:
-            Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
+            ${{ env.error_details || 'No C++ error log available. Workflow failed before C++ error_details was generated.' }}
+
+            ──────────────────────────────────
+            📦 BUILD OUTPUT
+            ──────────────────────────────────
+
+            • ZIP Name       : ${{ env.ZIP_NAME || 'not generated' }}
+            • ZIP SHA256     : ${{ env.ZIP_SHA256 || 'not generated' }}
+            • ZIP Size       : ${{ env.ZIP_SIZE || 'not generated' }} bytes
+
+            ──────────────────────────────────
+            🛡️ INFRASTRUCTURE
+            ──────────────────────────────────
+
+            Existing Root-Assistant infrastructure remains preserved.
+            No engine rollback is performed automatically.
+
+            ──────────────────────────────────
+            📝 ACTION
+            ──────────────────────────────────
+
+            Build dihentikan pada tahap yang gagal.
+            Perbaiki failure point sebelum checkpoint berikutnya.
+
+            ╔══════════════════════════════════╗
+            ║  END OF FAILURE REPORT           ║
+            ╚══════════════════════════════════╝
