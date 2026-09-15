@@ -58,29 +58,10 @@ jobs:
       - name: Check Build Status
         id: check_status
         run: |
-          if [ -s jni/build_error.log ] && grep -qiE "fatal error:|error:|undefined reference|no such file|permission denied|failed|failure" jni/build_error.log; then
+          if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
             echo "build_status=FAILURE" >> $GITHUB_ENV
-            ROOT_ERROR=$(grep -iE "fatal error:|error:|undefined reference|no such file|permission denied|failed|failure" jni/build_error.log | head -n 1)
-            ROOT_ERROR=$(echo "$ROOT_ERROR" | cut -c1-500)
-            if echo "$ROOT_ERROR" | grep -qi "fatal error:"; then
-              ERROR_POINT="Compile"
-              ERROR_DETAIL="Kegagalan utama terdeteksi pada compiler C/C++."
-            elif echo "$ROOT_ERROR" | grep -qi "undefined reference"; then
-              ERROR_POINT="Linking"
-              ERROR_DETAIL="Symbol atau function yang dibutuhkan tidak ditemukan saat linking."
-            elif echo "$ROOT_ERROR" | grep -qiE "no such file|cannot find"; then
-              ERROR_POINT="Compile"
-              ERROR_DETAIL="File atau dependency yang dibutuhkan tidak ditemukan."
-            elif echo "$ROOT_ERROR" | grep -qi "permission denied"; then
-              ERROR_POINT="Build"
-              ERROR_DETAIL="Proses build tidak memiliki akses yang diperlukan."
-            else
-              ERROR_POINT="Compile"
-              ERROR_DETAIL="Error utama terdeteksi dari output build."
-            fi
-            echo "error_point=$ERROR_POINT" >> $GITHUB_ENV
-            echo "error_detail=$ERROR_DETAIL" >> $GITHUB_ENV
-            echo "root_cause=$ROOT_ERROR" >> $GITHUB_ENV
+            ERROR_MSG=$(tail -n 25 jni/build_error.log | tr '\n' ' ' | sed 's/"/'\''/g')
+            echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
             exit 1
           else
             echo "build_status=SUCCESS" >> $GITHUB_ENV
@@ -164,49 +145,32 @@ jobs:
             Existing infrastructure tetap dipertahankan.
 
       - name: Send Telegram Notification (Failure with Error Log)
-        if: always() && (env.build_status == FAILURE || failure())
+        if: always() && (env.build_status == 'FAILURE' || failure())
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            🚨 ROOT ASSISTANT DEVELOPMENT UPDATE
+            🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
 
             📍 Phase: ${{ env.RA_PHASE }}
             🔧 Step: ${{ env.RA_STEP }}
 
-            Status: ❌ FAIL — Build & ZIP Checkpoint
+            Status: ❌ FAILED
 
-            📦 File: Root-Assistant-PHASE5-P1.1
-            🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
+            📦 Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
+            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
 
             📊 Result:
             • Compile: ❌ FAILED
+            • Static Check: ⏭️ NOT RUN
             • Package: ⏭️ NOT RUN
-            • ZIP Integrity: ⏭️ NOT RUN
-            • Existing Infrastructure: ✅ Preserved
+            • Release: ❌ NOT CREATED
 
-            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
+            ⚠️ LOG ERROR C++:
+            ${{ env.error_details }}
 
-            🎯 ANALISA ERROR UTAMA
-
-            ❌ Titik gagal: ${{ env.error_point }}
-
-            🔎 Root Cause:
-            `${{ env.root_cause }}`
-
-            📍 Detail:
-            ${{ env.error_detail }}
-
-            🎯 Error terpusat:
-            Error utama dipilih dari kandidat error paling awal dan paling relevan pada log build.
-
-            📝 SUMMARY
-
-            🔐 Checkpoint: P1.1 Build & ZIP Integrity
-
-            🛡️ Infrastructure:
-            Existing infrastructure tetap dipertahankan.
-
+            📝 Action:
+            Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
