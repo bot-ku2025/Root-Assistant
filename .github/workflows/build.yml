@@ -35,7 +35,7 @@ jobs:
       - name: Capture Git Info & Sanitize Version
         run: |
           echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
-          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$(git rev-parse --short=6 HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "RA_PHASE=PHASE 5 — P1 Foundation" >> $GITHUB_ENV
           echo "RA_STEP=P1.1 — Build ZIP Integrity Checkpoint" >> $GITHUB_ENV
