@@ -39,7 +39,6 @@ jobs:
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "RA_PHASE=PHASE 5 — P1 Foundation" >> $GITHUB_ENV
           CHECKPOINT="P1.3"; echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV; echo "RA_STEP=P1.3 — Runtime Foundation Checkpoint" >> $GITHUB_ENV
-" "$COMMIT_MSG" | grep -oE "P[0-9]+.[0-9]+" | head -1); [ -n "$CHECKPOINT" ] || CHECKPOINT="P1.3"; echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV; echo "RA_STEP=${CHECKPOINT} — Auto Checkpoint Detection" >> $GITHUB_ENV
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
