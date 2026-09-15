@@ -1,5 +1,3 @@
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <android/log.h>
 #include "zygisk.hpp"
 
@@ -15,19 +13,14 @@ public:
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
         if (args && args->uid >= 10000) {
-            // Senjata 1: Perintahkan Zygisk unmount secara aman tanpa Seccomp Crash
-            api->setOption(zygisk::Option::FORCE_DENYLIST_UNMOUNT);
-            
-            // Hapus modul dari memori (Stealth)
+            // HANYA cabut library dari memori agar Zygisk tidak terdeteksi di RAM.
+            // TIDAK ADA LAGI UNMOUNT DARI SINI UNTUK MENCEGAH CRASH & STUCK LOADING!
             api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
-            
-            LOGI("Native Zygisk Delegation active for UID: %d", args->uid);
+            LOGI("Minimalist Stealth active for UID: %d", args->uid);
         }
     }
 
-    void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {
-        // Biarkan kosong agar tidak memicu Seccomp FATAL EXCEPTION
-    }
+    void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {}
 
 private:
     zygisk::Api *api;
