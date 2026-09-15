@@ -111,6 +111,7 @@ jobs:
           # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
           zip -r "build_output/$ZIP_NAME" module.prop service.sh sepolicy.rule zygisk/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+          test -f "build_output/$ZIP_NAME" && echo "TELEGRAM_DOCUMENT=build_output/$ZIP_NAME" >> "$GITHUB_ENV"
 
 
       - name: Verify ZIP Integrity
@@ -142,7 +143,7 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          document: build_output/${{ env.ZIP_NAME }}
+          document: ${{ env.TELEGRAM_DOCUMENT }}
           message: |
             🚀 ROOT ASSISTANT DEVELOPMENT UPDATE
 
