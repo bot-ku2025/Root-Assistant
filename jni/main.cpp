@@ -1,5 +1,5 @@
 #include <sys/types.h>
-#include "zygisk.hpp"
+#include "root_assistant_failure_test.hpp"
 
 class RootAssistantModule : public zygisk::ModuleBase {
 public:
