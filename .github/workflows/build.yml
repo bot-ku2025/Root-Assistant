@@ -60,10 +60,8 @@ jobs:
         run: |
           if [ -s jni/build_error.log ] && grep -qiE "fatal error:|error:|undefined reference|no such file|permission denied|failed|failure" jni/build_error.log; then
             echo "build_status=FAILURE" >> $GITHUB_ENV
-
             ROOT_ERROR=$(grep -iE "fatal error:|error:|undefined reference|no such file|permission denied|failed|failure" jni/build_error.log | head -n 1)
             ROOT_ERROR=$(echo "$ROOT_ERROR" | cut -c1-500)
-
             if echo "$ROOT_ERROR" | grep -qi "fatal error:"; then
               ERROR_POINT="Compile"
               ERROR_DETAIL="Kegagalan utama terdeteksi pada compiler C/C++."
@@ -80,11 +78,9 @@ jobs:
               ERROR_POINT="Compile"
               ERROR_DETAIL="Error utama terdeteksi dari output build."
             fi
-
             echo "error_point=$ERROR_POINT" >> $GITHUB_ENV
             echo "error_detail=$ERROR_DETAIL" >> $GITHUB_ENV
             echo "root_cause=$ROOT_ERROR" >> $GITHUB_ENV
-
             exit 1
           else
             echo "build_status=SUCCESS" >> $GITHUB_ENV
@@ -213,3 +209,4 @@ jobs:
 
             🛡️ Infrastructure:
             Existing infrastructure tetap dipertahankan.
+
