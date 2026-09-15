@@ -73,7 +73,6 @@ jobs:
             fi
             ERROR_MSG=$(printf "%s" "$ERROR_MSG" | tr "\n" " " | sed "s/[[:space:]]\+/ /g")
             echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
-            echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
             exit 1
           else
             echo "build_status=SUCCESS" >> $GITHUB_ENV
@@ -163,26 +162,38 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
+            🚨 ROOT ASSISTANT DEVELOPMENT UPDATE
 
             📍 Phase: ${{ env.RA_PHASE }}
             🔧 Step: ${{ env.RA_STEP }}
 
-            Status: ❌ FAILED
+            Status: ❌ FAIL — Build & ZIP Checkpoint
 
-            📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+            📦 File: Root-Assistant-PHASE5-P1.1
+            🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
 
             📊 Result:
-            • Compile: ❌ FAILED
-            • Static Check: ⏭️ NOT RUN
-            • Package: ⏭️ NOT RUN
-            • Release: ❌ NOT CREATED
+            • Compile: ❌ FAIL
+            • Package: ⏭️ SKIPPED
+            • ZIP Integrity: ⏭️ SKIPPED
+            • Existing Infrastructure: ✅ Preserved
 
-            ⚠️ LOG ERROR C++:
+            🎯 ANALISA ERROR UTAMA
+
+            ❌ Titik gagal: Compile
+
+            🔎 Root Cause:
+            `${{ env.error_details }}`
+
+            🎯 Error terpusat:
             ${{ env.error_details }}
 
-            📝 Action:
-            Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
+            📝 SUMMARY
+
+            🔐 Checkpoint: P1.1 Build & ZIP Integrity
+
+            🛡️ Infrastructure:
+            Existing infrastructure tetap dipertahankan.
