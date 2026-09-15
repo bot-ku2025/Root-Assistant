@@ -184,19 +184,19 @@ jobs:
             📌 Topik Update: ${{ github.event.head_commit.message }}
             ⏰ Waktu Gagal: ${{ github.run_started_at }}
 
-            📊 Result:
-            • Compile Outcome: ${{ steps.compile.outcome }}
-            • Static Check: ${{ steps.check_status.outcome }}
-            • Package: ${{ steps.package.outcome }}
-            • ZIP Integrity: ${{ steps.verify_zip.outcome }}
-            • Release: NOT CREATED
+            📊 RESULT
+            • Compile: ${{ steps.compile.outcome }}
+            • Build Status Check: ${{ steps.check_status.outcome }}
+            • Package: ${{ env.ZIP_NAME && '✅ COMPLETED' || '⏭️ NOT RUN' }}
+            • ZIP Integrity: ${{ env.ZIP_SHA256 && '✅ PASSED' || '⏭️ NOT RUN' }}
+            • Release: ❌ NOT CREATED
 
-            ⚠️ Failure Point:
-            Compile Step Outcome = ${{ steps.compile.outcome }}
-            Check Build Status Outcome = ${{ steps.check_status.outcome }}
+            ⚠️ FAILURE POINT
+            Compile Step: ${{ steps.compile.outcome }}
+            Build Status Step: ${{ steps.check_status.outcome }}
 
-            ⚠️ LOG ERROR C++:
-            ${{ env.error_details }}
+            ⚠️ LOG ERROR C++
+            ${{ env.error_details || 'Tidak tersedia — kegagalan terjadi sebelum error C++ berhasil direkam.' }}
 
             📝 Action:
             Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
