@@ -37,6 +37,8 @@ jobs:
           echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
+          echo "RA_PHASE=PHASE 5 — P1 Foundation" >> $GITHUB_ENV
+          echo "RA_STEP=P1.0 — Telegram Development Output" >> $GITHUB_ENV
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
@@ -91,13 +93,30 @@ jobs:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           document: build_output/${{ env.ZIP_NAME }}
           message: |
-            🚀 ROOT ASSISTANT BUILD UPDATE
+            🚀 ROOT ASSISTANT DEVELOPMENT UPDATE
 
-            Status: ✅ Sukses & Released (Zygisk Standard Fixed)
+            📍 Phase: ${{ env.RA_PHASE }}
+            🔧 Step: ${{ env.RA_STEP }}
+
+            Status: ✅ PASS — Build & Release
+
             📦 File: *Root-Assistant-${{ env.VERSION_TAG }}*
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
+            📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
+
+            📊 Result:
+            • Compile: ✅ PASS
+            • Package: ✅ PASS
+            • Release: ✅ PASS
+            • Existing Infrastructure: ✅ Preserved
+
             ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
+
+            📝 Summary:
+            P1 checkpoint berhasil. Build dan release selesai.
+            Infrastruktur operasional yang ada tetap dipertahankan.
+
 
       - name: Send Telegram Notification (Failure with Error Log)
         if: always() && (env.build_status == 'FAILURE' || failure())
@@ -106,12 +125,26 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ❌ ROOT ASSISTANT BUILD FAILED
+            🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
 
-            Status: ❌ Gagal (Error Compiler)
+            📍 Phase: ${{ env.RA_PHASE }}
+            🔧 Step: ${{ env.RA_STEP }}
+
+            Status: ❌ FAILED
+
             📦 Build Run: Build Hybrid Module #${{ github.run_number }}
+            📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
             ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
-            
+
+            📊 Result:
+            • Compile: ❌ FAILED
+            • Static Check: ⏭️ NOT RUN
+            • Package: ⏭️ NOT RUN
+            • Release: ❌ NOT CREATED
+
             ⚠️ LOG ERROR C++:
             ${{ env.error_details }}
+
+            📝 Action:
+            Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
