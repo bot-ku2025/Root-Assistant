@@ -1,13 +1,12 @@
 MODPATH="${0%/*}"
 
-# Tunggu sampai sistem benar-benar nyala
 until [ "$(getprop sys.boot_completed)" = "1" ]; do
     sleep 1
 done
-sleep 5 # Jeda ekstra agar KernelSU selesai mounting
+sleep 3
 
-# Eksekusi jebakan Sentinel setelah aman
+# Gunakan tmpfs untuk menimpa folder Sentinel dengan folder kosong bersih di level kernel
 TARGET_TRAP="/data/adb/ModuleSentinel"
 if [ -d "$TARGET_TRAP" ]; then
-    mount -o bind /dev/null "$TARGET_TRAP"
+    mount -t tmpfs -o size=4k tmpfs "$TARGET_TRAP"
 fi

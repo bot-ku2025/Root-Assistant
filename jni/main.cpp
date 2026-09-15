@@ -13,11 +13,10 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
+        // HAPUS SEMUA Opsi DLCLOSE / Unmount yang memicu crash. 
+        // Biarkan Zygisk berjalan bersih tanpa mengganggu runtime aplikasi.
         if (args && args->uid >= 10000) {
-            // HANYA cabut library dari memori agar Zygisk tidak terdeteksi di RAM.
-            // TIDAK ADA LAGI UNMOUNT DARI SINI UNTUK MENCEGAH CRASH & STUCK LOADING!
-            api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
-            LOGI("Minimalist Stealth active for UID: %d", args->uid);
+            LOGI("Safe Pass-Through active for UID: %d", args->uid);
         }
     }
 
