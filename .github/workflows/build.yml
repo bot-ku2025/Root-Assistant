@@ -60,7 +60,19 @@ jobs:
         run: |
           if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
             echo "build_status=FAILURE" >> $GITHUB_ENV
-            ERROR_MSG=$(tail -n 25 jni/build_error.log | tr '\n' ' ' | sed 's/"/'\''/g')
+            ERROR_MSG=$(awk '
+              /fatal error:/ { print; exit }
+              /error:/ && !/make\[[0-9]+\]:/ { print; exit }
+              /undefined reference to/ { print; exit }
+              /No such file or directory/ { print; exit }
+              /Permission denied/ { print; exit }
+              /command not found/ { print; exit }
+            ' jni/build_error.log)
+            if [ -z "$ERROR_MSG" ]; then
+              ERROR_MSG="Root cause tidak dapat ditentukan secara otomatis."
+            fi
+            ERROR_MSG=$(printf "%s" "$ERROR_MSG" | tr "\n" " " | sed "s/[[:space:]]\+/ /g")
+            echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
             echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
             exit 1
           else
