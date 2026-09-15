@@ -94,12 +94,12 @@ jobs:
           ZIP_NAME="Root-Assistant-PHASE5-P1.2.zip"
           # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
           zip -r "build_output/$ZIP_NAME" \
-  module.prop \
-  service.sh \
-  sepolicy.rule \
-  customize.sh \
-  META-INF/ \
-  zygisk/
+            module.prop \
+            service.sh \
+            sepolicy.rule \
+            customize.sh \
+            META-INF/ \
+            zygisk/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
 
