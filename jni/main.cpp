@@ -8,14 +8,16 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        if (args && args->uid >= 10000) {
-            // Bersihkan memori aplikasi dari jejak modul seketika tanpa log/crash
+        if (!api || !args)
+            return;
+
+        if (args->uid >= 10000) {
             api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
         }
     }
 
 private:
-    zygisk::Api *api;
+    zygisk::Api *api = nullptr;
 };
 
 REGISTER_ZYGISK_MODULE(RootAssistantModule)
