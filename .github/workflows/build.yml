@@ -38,7 +38,7 @@ jobs:
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "RA_PHASE=PHASE 5 — P1 Foundation" >> $GITHUB_ENV
-          echo "RA_STEP=P1.1 — Build ZIP Integrity Checkpoint" >> $GITHUB_ENV
+          echo "RA_STEP=P1.2 — Runtime Foundation" >> $GITHUB_ENV
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
@@ -91,9 +91,15 @@ jobs:
             cp libs/arm64-v8a/*.so zygisk/arm64-v8a.so
           fi
           
-          ZIP_NAME="Root-Assistant-PHASE5-P1.1.zip"
+          ZIP_NAME="Root-Assistant-PHASE5-P1.2.zip"
           # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
-          zip -r "build_output/$ZIP_NAME" module.prop service.sh sepolicy.rule zygisk/
+          zip -r "build_output/$ZIP_NAME" \
+  module.prop \
+  service.sh \
+  sepolicy.rule \
+  customize.sh \
+  META-INF/ \
+  zygisk/
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
 
@@ -135,7 +141,7 @@ jobs:
 
             Status: ✅ PASS — Build & ZIP Checkpoint
 
-            📦 File: Root-Assistant-​PHASE5-P1.1
+            📦 File: Root-Assistant-PHASE5-P1.2
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
@@ -150,7 +156,7 @@ jobs:
 
             📝 SUMMARY
 
-            🔐 Checkpoint: P1.1 Build & ZIP Integrity
+            🔐 Checkpoint: P1.2 Runtime Foundation
 
             🛡️ Infrastructure:
             Existing infrastructure tetap dipertahankan.
@@ -169,7 +175,7 @@ jobs:
 
             Status: ❌ FAIL — Build & ZIP Checkpoint
 
-            📦 File: Root-Assistant-PHASE5-P1.1
+            📦 File: Root-Assistant-PHASE5-P1.2
             🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
             📌 Commit: `${{ env.COMMIT_SHA }}`
             📌 Topik Update: ${{ env.COMMIT_MSG }}
@@ -193,7 +199,7 @@ jobs:
 
             📝 SUMMARY
 
-            🔐 Checkpoint: P1.1 Build & ZIP Integrity
+            🔐 Checkpoint: P1.2 Runtime Foundation
 
             🛡️ Infrastructure:
             Existing infrastructure tetap dipertahankan.
