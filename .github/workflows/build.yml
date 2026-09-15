@@ -175,7 +175,7 @@ jobs:
             🚨 ROOT ASSISTANT DEVELOPMENT FAILURE
 
             📍 Phase: PHASE 5 — P1 Foundation
-            🔧 Step: P1.3 — ${{ github.event.head_commit.message }}
+            🔧 Step: P1.3
 
             Status: ❌ FAILED
 
@@ -185,17 +185,18 @@ jobs:
             ⏰ Waktu Gagal: ${{ github.run_started_at }}
 
             📊 Result:
-            • Checkpoint Detection: ${{ steps.compile.outcome == 'skipped' && '❌ FAILED / NOT REACHED BUILD' || '✅ PASSED' }}
-            • Compile: ${{ steps.compile.outcome == 'failure' && '❌ FAILED' || steps.compile.outcome == 'skipped' && '⏭️ NOT RUN' || '✅ PASSED' }}
-            • Static Check: ⏭️ NOT RUN
-            • Package: ${{ env.build_status == 'SUCCESS' && '✅ PASSED' || '⏭️ NOT RUN' }}
-            • Release: ❌ NOT CREATED
+            • Compile Outcome: ${{ steps.compile.outcome }}
+            • Static Check: ${{ steps.check_status.outcome }}
+            • Package: ${{ steps.package.outcome }}
+            • ZIP Integrity: ${{ steps.verify_zip.outcome }}
+            • Release: NOT CREATED
 
             ⚠️ Failure Point:
-            ${{ steps.compile.outcome == 'skipped' && 'Workflow gagal sebelum proses Compile. || 'Build with NDK / Check Build Status' }}
+            Compile Step Outcome = ${{ steps.compile.outcome }}
+            Check Build Status Outcome = ${{ steps.check_status.outcome }}
 
             ⚠️ LOG ERROR C++:
-            ${{ env.error_details || 'Tidak tersedia — failure terjadi sebelum log C++ dibuat. }}
+            ${{ env.error_details }}
 
             📝 Action:
             Build dihentikan. Perbaiki error sebelum checkpoint berikutnya.
