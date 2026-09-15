@@ -115,7 +115,6 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          document: build_output/${{ env.ZIP_NAME }}
           message: |
             🚀 ROOT ASSISTANT DEVELOPMENT UPDATE
 
@@ -141,11 +140,7 @@ jobs:
 
             🔐 Checkpoint: P1.1 Build & ZIP Integrity
 
-            🔑 SHA256:
-            ${{ env.ZIP_SHA256 }}
 
-            📏 ZIP Size:
-            ${{ env.ZIP_SIZE }} bytes
 
             🛡️ Infrastructure:
             Existing infrastructure tetap dipertahankan.
