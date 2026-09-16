@@ -83,7 +83,7 @@ jobs:
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           rm -f "$GITHUB_WORKSPACE/$ZIP_NAME"
           cd "$GITHUB_WORKSPACE"
-          zip -q -r "$ZIP_NAME" module.prop service.sh sepolicy.rule zygisk/
+          zip -q -r "$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule zygisk/
           test -s "$GITHUB_WORKSPACE/$ZIP_NAME"
           unzip -tq "$GITHUB_WORKSPACE/$ZIP_NAME"
           echo "ZIP CONTENT:"
