@@ -1,26 +1,7 @@
 #include <sys/types.h>
 #include <android/log.h>
-#define RA_LOG(...) __android_log_print(ANDROID_LOG_INFO,"RootAssistant",__VA_ARGS__)
-#include <android/log.h>
-#define RA_LOG(...) __android_log_print(ANDROID_LOG_INFO,"RootAssistant",__VA_ARGS__)
-#include <cstdint>
-#include <android/log.h>
 #define RA_LOG(...) __android_log_print(ANDROID_LOG_INFO, "RootAssistant", __VA_ARGS__)
 #include "zygisk.hpp"
-
-namespace ra {
-struct EngineState { bool initialized=false; bool platform_supported=false; bool capability_ready=false; };
-static EngineState state{};
-static bool initialize_foundation() { state.initialized=true; return true; }
-}
-
-
-namespace ra {
-struct EngineState { bool initialized=false; bool platform_supported=false; bool capability_ready=false; };
-static EngineState state{};
-static bool initialize_foundation() { state.initialized=true; return true; }
-}
-
 
 namespace ra {
 struct EngineState {
@@ -42,7 +23,7 @@ public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
         if (!ra::initialize_foundation()) {
-            RA_LOG("Root Assistant foundation initialization failed; engine remains disabled");
+            RA_LOG("Root Assistant foundation initialization failed");
             return;
         }
         RA_LOG("Root Assistant runtime initialized");
@@ -54,9 +35,7 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        if (!api || !args)
-            return;
-
+        if (!api || !args) return;
         if (args->uid >= 10000) {
             api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
         }
