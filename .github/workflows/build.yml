@@ -60,6 +60,40 @@ jobs:
           ls -lh "$ARTIFACT_PATH"
           echo "=================================================="
 
+      - name: P0.5 Package ZIP Integrity
+        run: |
+          set -e
+          echo "=================================================="
+          echo "PHASE 5 — P0 AUTOMATION BRIDGE"
+          echo "P0.5 — PACKAGE/ZIP INTEGRITY CHECKPOINT"
+          echo "RUN NUMBER: $GITHUB_RUN_NUMBER"
+          echo "COMMIT: $GITHUB_SHA"
+          echo "=================================================="
+          ARTIFACT_PATH="$(find "$GITHUB_WORKSPACE" -type f -name librootassistant.so -size +0c -print -quit)"
+          test -n "$ARTIFACT_PATH"
+          test -s "$ARTIFACT_PATH"
+          mkdir -p "$GITHUB_WORKSPACE/zygisk"
+          cp "$ARTIFACT_PATH" "$GITHUB_WORKSPACE/zygisk/arm64-v8a.so"
+          test -s "$GITHUB_WORKSPACE/zygisk/arm64-v8a.so"
+          ZIP_NAME="Root-Assistant-PHASE5-P0.5.zip"
+          rm -f "$GITHUB_WORKSPACE/$ZIP_NAME"
+          cd "$GITHUB_WORKSPACE"
+          zip -q -r "$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule zygisk/
+          test -s "$GITHUB_WORKSPACE/$ZIP_NAME"
+          unzip -tq "$GITHUB_WORKSPACE/$ZIP_NAME"
+          echo "ZIP CONTENT:"
+          unzip -l "$GITHUB_WORKSPACE/$ZIP_NAME"
+          ZIP_SIZE="$(stat -c%s "$GITHUB_WORKSPACE/$ZIP_NAME")"
+          ZIP_SHA256="$(sha256sum "$GITHUB_WORKSPACE/$ZIP_NAME" | awk "{print \$1}")"
+          test "$ZIP_SIZE" -gt 0
+          echo "=================================================="
+          echo "P0.5 PACKAGE: PASS"
+          echo "ZIP: $ZIP_NAME"
+          echo "SIZE: $ZIP_SIZE bytes"
+          echo "SHA256: $ZIP_SHA256"
+          echo "ZIP INTEGRITY: PASS"
+          echo "=================================================="
+
       - name: Telegram Checkpoint
         if: always()
         uses: appleboy/telegram-action@master
@@ -70,7 +104,7 @@ jobs:
             🚀 ROOT ASSISTANT CHECKPOINT
 
             Phase: PHASE 5 — P0 Automation Bridge
-            Step: P0.4 — NDK Compile Checkpoint
+            Step: P0.5 — Package/ZIP Integrity Checkpoint
 
             Status: ${{ job.status }}
             Run: #${{ github.run_number }}
