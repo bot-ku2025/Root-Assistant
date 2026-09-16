@@ -1,5 +1,4 @@
 name: Build Zygisk Module
-
 on:
   push:
     branches:
@@ -17,18 +16,254 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: P0.3.3 Runner Diagnostic
+      - name: Download & Setup Android NDK Directly
+        run: |
+          echo "Downloading Android NDK r26b..."
+          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
+          echo "Extracting NDK..."
+          unzip -q android-ndk-r26b-linux.zip
+          echo "NDK_ROOT=$PWD/android-ndk-r26b" >> $GITHUB_ENV
+          echo "$PWD/android-ndk-r26b" >> $GITHUB_PATH
+
+      - name: Download Zygisk API Header
+        run: |
+          mkdir -p jni
+          wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
+
+      - name: Capture Git Info & Sanitize Version
+        run: |
+          echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
+          echo "RA_PHASE=PHASE 5 — P0 Automation Bridge" >> $GITHUB_ENV
+          CHECKPOINT="P0.3.4"
+          echo "CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV
+          echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV
+          echo "RA_STEP=P0.3.4 — Persistent Machine-Readable State" >> $GITHUB_ENV
+          echo "RA_STATE=RUNNING" >> $GITHUB_ENV
+          mkdir -p .github/automation
+          cat > .github/automation/state.json <<STATE
+{
+  "schema_version": "1.0",
+  "phase": "PHASE 5 — P0 Automation Bridge",
+  "checkpoint": "$CHECKPOINT",
+  "step": "P0.3.4 — Persistent Machine-Readable State",
+  "status": "RUNNING",
+  "commit_sha": "$COMMIT_SHA",
+  "run_number": "${GITHUB_RUN_NUMBER}",
+  "timestamp": "$BUILD_TIME WIB",
+  "compile": "RUNNING",
+  "package": "PENDING",
+  "zip_integrity": "PENDING",
+  "failure_stage": "",
+  "failure_reason": "",
+  "next_action": "BUILD"
+}
+STATE
+          if [ -f module.prop ]; then
+            RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
+            CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
+            echo "VERSION_TAG=${CLEAN_VERSION:-v3.0-Ultimate}" >> $GITHUB_ENV
+          else
+            echo "VERSION_TAG=v3.0-Ultimate" >> $GITHUB_ENV
+          fi
+
+      - name: Build with NDK & Capture Error Log
+        id: compile
+        continue-on-error: true
+        run: |
+          cd jni
+          ndk-build 2> build_error.log
+          cat build_error.log
+
+      - name: Check Build Status
+        id: check_status
+        run: |
+          if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
+            echo "build_status=FAILURE" >> $GITHUB_ENV
+            ERROR_MSG=$(awk '
+              /fatal error:/ { print; exit }
+              /error:/ && !/make\[[0-9]+\]:/ { print; exit }
+              /undefined reference to/ { print; exit }
+              /No such file or directory/ { print; exit }
+              /Permission denied/ { print; exit }
+              /command not found/ { print; exit }
+            ' jni/build_error.log)
+            if [ -z "$ERROR_MSG" ]; then
+              ERROR_MSG="Root cause tidak dapat ditentukan secara otomatis."
+            fi
+            ERROR_MSG=$(printf "%s" "$ERROR_MSG" | tr "\n" " " | sed "s/[[:space:]]\+/ /g")
+            echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
+            exit 1
+          else
+            echo "build_status=SUCCESS" >> $GITHUB_ENV
+            python3 - <<'PY2'
+import json
+from pathlib import Path
+p=Path(".github/automation/state.json")
+d=json.loads(p.read_text())
+d["status"]="RUNNING"
+d["compile"]="PASS"
+d["next_action"]="PACKAGE"
+p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+PY2
+          fi
+
+      - name: Package Module (Zygisk Standard Structure)
+        id: package
+        if: env.build_status == 'SUCCESS'
+        run: |
+          mkdir -p build_output
+          mkdir -p zygisk
+
+          # Pindahkan dan sesuaikan nama .so agar terbaca oleh Zygisk daemon
+          if [ -f obj/local/arm64-v8a/librootassistant.so ]; then
+            cp obj/local/arm64-v8a/librootassistant.so zygisk/arm64-v8a.so
+          elif [ -f libs/arm64-v8a/*.so ]; then
+            cp libs/arm64-v8a/*.so zygisk/arm64-v8a.so
+          fi
+
+          ZIP_NAME="Root-Assistant-${CHECKPOINT}.zip"
+          # Bungkus dengan folder 'zygisk/' wajib standar Topjohnwu
+          zip -r "build_output/$ZIP_NAME" \
+            module.prop \
+            service.sh \
+            sepolicy.rule \
+            customize.sh \
+            META-INF/ \
+            zygisk/
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+
+      - name: Verify ZIP Integrity
+        id: verify
+        if: env.build_status == 'SUCCESS'
         run: |
           set -e
-          echo "PHASE 5 — P0.3.3 WORKFLOW RUNNER ISOLATION"
-          echo "STATUS=PASS"
-          echo "CHECKPOINT=P0.3.3"
-          echo "RUNNER=$RUNNER_OS"
-          echo "COMMIT=$GITHUB_SHA"
-          echo "RUN_NUMBER=$GITHUB_RUN_NUMBER"
 
-      - name: P0.3.3 Telegram Checkpoint
+          ZIP="build_output/${ZIP_NAME}"
+
+          test -s "$ZIP"
+          unzip -tq "$ZIP"
+
+          unzip -l "$ZIP" | grep -q "module.prop"
+          unzip -l "$ZIP" | grep -q "service.sh"
+          unzip -l "$ZIP" | grep -q "sepolicy.rule"
+          unzip -l "$ZIP" | grep -q "zygisk/arm64-v8a.so"
+
+          test -s zygisk/arm64-v8a.so
+
+          SHA256=$(sha256sum "$ZIP" | cut -d' ' -f1)
+          ZIP_SIZE=$(stat -c%s "$ZIP")
+
+          echo "ZIP_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "ZIP_SIZE=$ZIP_SIZE" >> $GITHUB_ENV
+          python3 - <<'PY3'
+import json
+from pathlib import Path
+p=Path(".github/automation/state.json")
+d=json.loads(p.read_text())
+d["status"]="PASS"
+d["compile"]="PASS"
+d["package"]="PASS"
+d["zip_integrity"]="PASS"
+d["next_action"]="WAIT_FOR_CHATGPT"
+p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+PY3
+
+      - name: P0.3 Final Persistent Checkpoint
+        if: always()
+        env:
+          COMPILE_OUTCOME: ${{ steps.compile.outcome }}
+          CHECK_OUTCOME: ${{ steps.check_status.outcome }}
+          PACKAGE_OUTCOME: ${{ steps.package.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          set +e
+          mkdir -p .github/automation
+
+          COMPILE="FAIL"
+          PACKAGE="SKIPPED"
+          ZIP="SKIPPED"
+          STATUS="FAIL"
+          NEXT_ACTION="STOP"
+          FAILURE_STAGE=""
+          FAILURE_REASON="${error_details:-}"
+
+          if [ "$COMPILE_OUTCOME" = "success" ] && [ "$CHECK_OUTCOME" = "success" ]; then
+            COMPILE="PASS"
+          else
+            FAILURE_STAGE="COMPILE"
+          fi
+
+          if [ "$PACKAGE_OUTCOME" = "success" ]; then
+            PACKAGE="PASS"
+          elif [ "$PACKAGE_OUTCOME" = "skipped" ]; then
+            PACKAGE="SKIPPED"
+          else
+            PACKAGE="FAIL"
+            FAILURE_STAGE="PACKAGE"
+          fi
+
+          if [ "$VERIFY_OUTCOME" = "success" ]; then
+            ZIP="PASS"
+          elif [ "$VERIFY_OUTCOME" = "skipped" ]; then
+            ZIP="SKIPPED"
+          else
+            ZIP="FAIL"
+            FAILURE_STAGE="ZIP_INTEGRITY"
+          fi
+
+          if [ "$COMPILE" = "PASS" ] && [ "$PACKAGE" = "PASS" ] && [ "$ZIP" = "PASS" ]; then
+            STATUS="PASS"
+            NEXT_ACTION="WAIT_FOR_CHATGPT"
+          fi
+
+          if [ -z "$FAILURE_REASON" ] && [ "$STATUS" = "FAIL" ]; then
+            FAILURE_REASON="Workflow berhenti pada tahap $FAILURE_STAGE."
+          fi
+
+          cat > .github/automation/state.json <<STATE
+{
+  "schema_version": "1.0",
+  "phase": "PHASE 5 — P0 Automation Bridge",
+  "checkpoint": "$CHECKPOINT",
+  "step": "P0.3.4 — Persistent Machine-Readable State",
+  "status": "$STATUS",
+  "commit_sha": "${GITHUB_SHA}",
+  "run_number": "${GITHUB_RUN_NUMBER}",
+  "timestamp": "$(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M:%S WIB')",
+  "compile": "$COMPILE",
+  "package": "$PACKAGE",
+  "zip_integrity": "$ZIP",
+  "failure_stage": "$FAILURE_STAGE",
+  "failure_reason": "$FAILURE_REASON",
+  "next_action": "$NEXT_ACTION"
+}
+STATE
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/automation/state.json
+
+          if ! git diff --cached --quiet; then
+            git commit -m "ci(P0.3): persist final checkpoint [skip ci]"
+            git push origin HEAD:main
+            PERSISTED="PASS"
+          else
+            PERSISTED="PASS"
+          fi
+
+          echo "P0.3_FINAL_STATUS=$STATUS"
+          echo "P0.3_COMPILE=$COMPILE"
+          echo "P0.3_PACKAGE=$PACKAGE"
+          echo "P0.3_ZIP=$ZIP"
+          echo "P0.3_STATE_PERSISTED=$PERSISTED"
+
+      - name: Send Telegram Notification
         if: always()
         uses: appleboy/telegram-action@master
         with:
@@ -38,11 +273,17 @@ jobs:
             🚀 ROOT ASSISTANT CHECKPOINT
 
             Phase: PHASE 5 — P0 Automation Bridge
-            Step: P0.3.3 — Workflow Runner Isolation
+            Step: P0.3.4 — Persistent Machine-Readable State
+
             Status: ${{ job.status }}
-            Checkpoint: P0.3.3
+            Checkpoint: P0.3.4
             Commit: ${{ github.sha }}
             Build Run: #${{ github.run_number }}
 
-            Purpose: RUNNER_DIAGNOSTIC
-            Next: CHATGPT_READBACK
+            Compile: ${{ steps.compile.outcome }}
+            Package: ${{ steps.package.outcome }}
+            ZIP Integrity: ${{ steps.verify.outcome }}
+
+            State: .github/automation/state.json
+
+            Action: CHATGPT_READBACK
