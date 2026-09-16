@@ -18,18 +18,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: P0.3.9 Runner Test
+      - name: P0.4 Runner Sanity Test
         run: |
           set -e
           echo "PHASE 5 — P0 AUTOMATION BRIDGE"
-          echo "P0.3.9 — MINIMAL WORKFLOW PARSER TEST"
+          echo "P0.4 — NDK COMPILE CHECKPOINT"
           echo "RUN NUMBER: $GITHUB_RUN_NUMBER"
           echo "COMMIT: $GITHUB_SHA"
           test -f module.prop
           test -f jni/Android.mk
           test -f jni/Application.mk
           test -f jni/main.cpp
-          echo "RESULT: P0.3.9 RUNNER PASS"
+          echo "RESULT: RUNNER SANITY PASS"
+
+      - name: P0.4 Download Android NDK r26b
+        run: |
+          set -e
+          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
+          unzip -q android-ndk-r26b-linux.zip
+          echo "$PWD/android-ndk-r26b" >> "$GITHUB_PATH"
+          echo "NDK_ROOT=$PWD/android-ndk-r26b" >> "$GITHUB_ENV"
+          echo "NDK SETUP: PASS"
+
+      - name: P0.4 Download Zygisk Header
+        run: |
+          set -e
+          mkdir -p jni
+          wget -q https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp -O jni/zygisk.hpp
+          test -s jni/zygisk.hpp
+          echo "ZYGISK HEADER: PASS"
+
+      - name: P0.4 Compile ARM64
+        run: |
+          set -e
+          cd jni
+          ndk-build
+          test -s obj/local/arm64-v8a/librootassistant.so
+          echo "=================================================="
+          echo "P0.4 COMPILE: PASS"
+          echo "ARTIFACT: jni/obj/local/arm64-v8a/librootassistant.so"
+          ls -lh obj/local/arm64-v8a/librootassistant.so
+          echo "=================================================="
 
       - name: Telegram Checkpoint
         if: always()
