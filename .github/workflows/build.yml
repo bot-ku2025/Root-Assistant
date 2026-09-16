@@ -39,7 +39,10 @@ jobs:
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "RA_PHASE=PHASE 5 — P0 Automation Bridge" >> $GITHUB_ENV
-          CHECKPOINT="P0.3"; echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV; echo "RA_STEP=P0.3 — Persistent Machine-Readable State" >> $GITHUB_ENV
+          CHECKPOINT="P0.3"
+          echo "CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV
+          echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV
+          echo "RA_STEP=P0.3 — Persistent Machine-Readable State" >> $GITHUB_ENV
           echo "RA_STATE=RUNNING" >> $GITHUB_ENV
           mkdir -p .github/automation
           cat > .github/automation/state.json <<STATE
