@@ -57,7 +57,7 @@ jobs:
           echo "=================================================="
           echo "P0.4 COMPILE: PASS"
           echo "ARTIFACT: jni/libs/arm64-v8a/librootassistant.so"
-          ls -lh libs/arm64-v8a/librootassistant.so
+          ls -lh "$ARTIFACT_PATH"
           echo "=================================================="
 
       - name: Telegram Checkpoint
