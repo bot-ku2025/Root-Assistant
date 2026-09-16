@@ -110,6 +110,7 @@ PY2
           fi
 
       - name: Package Module (Zygisk Standard Structure)
+        id: package
         if: env.build_status == 'SUCCESS'
         run: |
           mkdir -p build_output
@@ -135,6 +136,7 @@ PY2
 
 
       - name: Verify ZIP Integrity
+        id: verify
         if: env.build_status == 'SUCCESS'
         run: |
           set -e
@@ -172,30 +174,53 @@ PY3
       - name: P0.3 Final Persistent Checkpoint
         if: always()
         env:
-          GH_TOKEN: ${{ github.token }}
+          COMPILE_OUTCOME: ${{ steps.compile.outcome }}
+          CHECK_OUTCOME: ${{ steps.check_status.outcome }}
+          PACKAGE_OUTCOME: ${{ steps.package.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
         run: |
           set +e
-
           mkdir -p .github/automation
 
+          COMPILE="FAIL"
+          PACKAGE="SKIPPED"
+          ZIP="SKIPPED"
           STATUS="FAIL"
           NEXT_ACTION="STOP"
-          COMPILE="${build_status:-FAIL}"
-          PACKAGE="FAIL"
-          ZIP="FAIL"
+          FAILURE_STAGE=""
+          FAILURE_REASON="${error_details:-}"
 
-          if [ "${build_status:-}" = "SUCCESS" ]; then
+          if [ "$COMPILE_OUTCOME" = "success" ] && [ "$CHECK_OUTCOME" = "success" ]; then
             COMPILE="PASS"
+          else
+            FAILURE_STAGE="COMPILE"
           fi
 
-          if [ -n "${ZIP_NAME:-}" ] && [ -f "${ZIP_NAME}" ]; then
+          if [ "$PACKAGE_OUTCOME" = "success" ]; then
             PACKAGE="PASS"
-            ZIP="PASS"
+          elif [ "$PACKAGE_OUTCOME" = "skipped" ]; then
+            PACKAGE="SKIPPED"
+          else
+            PACKAGE="FAIL"
+            FAILURE_STAGE="PACKAGE"
           fi
 
-          if [ "${build_status:-}" = "SUCCESS" ] && [ "$ZIP" = "PASS" ]; then
+          if [ "$VERIFY_OUTCOME" = "success" ]; then
+            ZIP="PASS"
+          elif [ "$VERIFY_OUTCOME" = "skipped" ]; then
+            ZIP="SKIPPED"
+          else
+            ZIP="FAIL"
+            FAILURE_STAGE="ZIP_INTEGRITY"
+          fi
+
+          if [ "$COMPILE" = "PASS" ] && [ "$PACKAGE" = "PASS" ] && [ "$ZIP" = "PASS" ]; then
             STATUS="PASS"
             NEXT_ACTION="WAIT_FOR_CHATGPT"
+          fi
+
+          if [ -z "$FAILURE_REASON" ] && [ "$STATUS" = "FAIL" ]; then
+            FAILURE_REASON="Workflow berhenti pada tahap $FAILURE_STAGE."
           fi
 
           cat > .github/automation/state.json <<STATE
@@ -211,28 +236,31 @@ PY3
   "compile": "$COMPILE",
   "package": "$PACKAGE",
   "zip_integrity": "$ZIP",
-  "failure_stage": "${failure_stage:-}",
-  "failure_reason": "${error_details:-}",
+  "failure_stage": "$FAILURE_STAGE",
+  "failure_reason": "$FAILURE_REASON",
   "next_action": "$NEXT_ACTION"
 }
 STATE
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add .github/automation/state.json
-          git diff --cached --quiet || \
-            git commit -m "ci(P0.3): persist final checkpoint [skip ci]"
 
-          git push origin HEAD:main || true
+          if ! git diff --cached --quiet; then
+            git commit -m "ci(P0.3): persist final checkpoint [skip ci]"
+            git push origin HEAD:main
+            PERSISTED="PASS"
+          else
+            PERSISTED="PASS"
+          fi
 
           echo "P0.3_FINAL_STATUS=$STATUS"
           echo "P0.3_COMPILE=$COMPILE"
           echo "P0.3_PACKAGE=$PACKAGE"
           echo "P0.3_ZIP=$ZIP"
-          echo "P0.3_STATE_PERSISTED=ATTEMPTED"
+          echo "P0.3_STATE_PERSISTED=$PERSISTED"
 
-      - name: P0.3 Telegram Failure-Safe
+      - name: Send Telegram Notification
         if: always()
         uses: appleboy/telegram-action@master
         with:
@@ -243,92 +271,16 @@ STATE
 
             Phase: PHASE 5 — P0 Automation Bridge
             Step: P0.3 — Persistent Machine-Readable State
+
             Status: ${{ job.status }}
             Checkpoint: P0.3
             Commit: ${{ github.sha }}
             Build Run: #${{ github.run_number }}
 
-            Compile: ${{ env.build_status || 'NOT_REACHED' }}
-            ZIP: ${{ env.ZIP_NAME || 'NOT_CREATED' }}
+            Compile: ${{ steps.compile.outcome }}
+            Package: ${{ steps.package.outcome }}
+            ZIP Integrity: ${{ steps.verify.outcome }}
 
-            Persistent State: .github/automation/state.json
+            State: .github/automation/state.json
 
             Action: CHATGPT_READBACK
-
-      - name: Send Telegram Notification (Success)
-        if: env.build_status == 'SUCCESS'
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-
-          message: |
-            🚀 ROOT ASSISTANT DEVELOPMENT UPDATE
-
-            📍 Phase: ${{ env.RA_PHASE }}
-            🔧 Step: ${{ env.RA_STEP }}
-
-            Status: ✅ PASS — Build & ZIP Checkpoint
-
-            📦 File: Root-Assistant-${{ env.RA_CHECKPOINT }}
-            🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
-            📌 Commit: `${{ env.COMMIT_SHA }}`
-            📌 Topik Update: ${{ env.COMMIT_MSG }}
-
-            📊 Result:
-            • Compile: ✅ PASS
-            • Package: ✅ PASS
-            • ZIP Integrity: ✅ PASS
-            • Existing Infrastructure: ✅ Preserved
-
-            ⏰ Waktu Selesai: ${{ env.BUILD_TIME }} WIB
-
-            📝 SUMMARY
-
-            🔐 Checkpoint: ${{ env.RA_CHECKPOINT }} Auto Checkpoint Detection
-
-            🛡️ Infrastructure:
-            Existing infrastructure tetap dipertahankan.
-
-      - name: Send Telegram Notification (Failure with Error Log)
-        if: always() && (env.build_status == 'FAILURE' || failure())
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |
-            🚨 ROOT ASSISTANT DEVELOPMENT UPDATE
-
-            📍 Phase: ${{ env.RA_PHASE }}
-            🔧 Step: ${{ env.RA_STEP }}
-
-            Status: ❌ FAIL — Build & ZIP Checkpoint
-
-            📦 File: Root-Assistant-${{ env.RA_CHECKPOINT }}
-            🛠️ Build Run: Build Hybrid Module #${{ github.run_number }}
-            📌 Commit: `${{ env.COMMIT_SHA }}`
-            📌 Topik Update: ${{ env.COMMIT_MSG }}
-            ⏰ Waktu Gagal: ${{ env.BUILD_TIME }} WIB
-
-            📊 Result:
-            • Compile: ❌ FAIL
-            • Package: ⏭️ SKIPPED
-            • ZIP Integrity: ⏭️ SKIPPED
-            • Existing Infrastructure: ✅ Preserved
-
-            🎯 ANALISA ERROR UTAMA
-
-            ❌ Titik gagal: Compile
-
-            🔎 Root Cause:
-            `${{ env.error_details }}`
-
-            🎯 Error terpusat:
-            ${{ env.error_details }}
-
-            📝 SUMMARY
-
-            🔐 Checkpoint: ${{ env.RA_CHECKPOINT }} Auto Checkpoint Detection
-
-            🛡️ Infrastructure:
-            Existing infrastructure tetap dipertahankan.
