@@ -75,7 +75,12 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/zygisk"
           cp "$ARTIFACT_PATH" "$GITHUB_WORKSPACE/zygisk/arm64-v8a.so"
           test -s "$GITHUB_WORKSPACE/zygisk/arm64-v8a.so"
-          ZIP_NAME="Root-Assistant-PHASE5-P0.5.zip"
+          MODULE_VERSION="$(sed -n "s/^version=//p" module.prop | head -n 1)"
+          test -n "$MODULE_VERSION"
+          PHASE_LABEL="PHASE5"
+          CHECKPOINT_LABEL="P0.8"
+          ZIP_NAME="Root-Assistant-${PHASE_LABEL}-${CHECKPOINT_LABEL}-${MODULE_VERSION}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           rm -f "$GITHUB_WORKSPACE/$ZIP_NAME"
           cd "$GITHUB_WORKSPACE"
           zip -q -r "$ZIP_NAME" module.prop post-fs-data.sh service.sh sepolicy.rule zygisk/
@@ -98,8 +103,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Root-Assistant-PHASE5-P0.5
-          path: Root-Assistant-PHASE5-P0.5.zip
+          name: Root-Assistant-PHASE5-P0.8
+          path: ${{ env.ZIP_NAME }}
           if-no-files-found: error
           retention-days: 7
 
@@ -109,7 +114,7 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          document: Root-Assistant-PHASE5-P0.5.zip
+          document: ${{ env.ZIP_NAME }}
           message: |
             📦 ROOT ASSISTANT ZIP DELIVERY
 
@@ -120,7 +125,7 @@ jobs:
             Run: #${{ github.run_number }}
             Commit: ${{ github.sha }}
 
-            ZIP: Root-Assistant-PHASE5-P0.5.zip
+            ZIP: ${{ env.ZIP_NAME }}
             ZIP Integrity: VERIFIED
             GitHub Artifact: VERIFIED
 
