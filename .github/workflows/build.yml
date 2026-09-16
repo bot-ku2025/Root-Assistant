@@ -38,8 +38,27 @@ jobs:
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "RA_PHASE=PHASE 5 — P0 Automation Bridge" >> $GITHUB_ENV
-          CHECKPOINT="P0.2"; echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV; echo "RA_STEP=P0.2 — Machine-Readable Checkpoint" >> $GITHUB_ENV
+          CHECKPOINT="P0.3"; echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV; echo "RA_STEP=P0.3 — Persistent Machine-Readable State" >> $GITHUB_ENV
           echo "RA_STATE=RUNNING" >> $GITHUB_ENV
+          mkdir -p .github/automation
+          cat > .github/automation/state.json <<STATE
+{
+  "schema_version": "1.0",
+  "phase": "PHASE 5 — P0 Automation Bridge",
+  "checkpoint": "$CHECKPOINT",
+  "step": "P0.3 — Persistent Machine-Readable State",
+  "status": "RUNNING",
+  "commit_sha": "$COMMIT_SHA",
+  "run_number": "${GITHUB_RUN_NUMBER}",
+  "timestamp": "$BUILD_TIME WIB",
+  "compile": "RUNNING",
+  "package": "PENDING",
+  "zip_integrity": "PENDING",
+  "failure_stage": "",
+  "failure_reason": "",
+  "next_action": "BUILD"
+}
+STATE
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
@@ -77,6 +96,16 @@ jobs:
             exit 1
           else
             echo "build_status=SUCCESS" >> $GITHUB_ENV
+            python3 - <<'PY2'
+import json
+from pathlib import Path
+p=Path(".github/automation/state.json")
+d=json.loads(p.read_text())
+d["status"]="RUNNING"
+d["compile"]="PASS"
+d["next_action"]="PACKAGE"
+p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+PY2
           fi
 
       - name: Package Module (Zygisk Standard Structure)
@@ -126,6 +155,18 @@ jobs:
 
           echo "ZIP_SHA256=$SHA256" >> $GITHUB_ENV
           echo "ZIP_SIZE=$ZIP_SIZE" >> $GITHUB_ENV
+          python3 - <<'PY3'
+import json
+from pathlib import Path
+p=Path(".github/automation/state.json")
+d=json.loads(p.read_text())
+d["status"]="PASS"
+d["compile"]="PASS"
+d["package"]="PASS"
+d["zip_integrity"]="PASS"
+d["next_action"]="WAIT_FOR_CHATGPT"
+p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+PY3
 
       - name: Send Telegram Notification (Success)
         if: env.build_status == 'SUCCESS'
