@@ -1,12 +1,32 @@
 #include <sys/types.h>
+#include <cstdint>
 #include <android/log.h>
 #define RA_LOG(...) __android_log_print(ANDROID_LOG_INFO, "RootAssistant", __VA_ARGS__)
 #include "zygisk.hpp"
+
+namespace ra {
+struct EngineState {
+    bool initialized = false;
+    bool platform_supported = false;
+    bool capability_ready = false;
+};
+
+static EngineState state{};
+
+static bool initialize_foundation() {
+    state.initialized = true;
+    return true;
+}
+}
 
 class RootAssistantModule : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api, JNIEnv *env) override {
         this->api = api;
+        if (!ra::initialize_foundation()) {
+            RA_LOG("Root Assistant foundation initialization failed; engine remains disabled");
+            return;
+        }
         RA_LOG("Root Assistant runtime initialized");
     }
 
