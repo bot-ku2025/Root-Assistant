@@ -73,10 +73,10 @@ STATE
 
       - name: Build with NDK & Capture Error Log
         id: compile
-        continue-on-error: true
+        continue-on-error: false
         run: |
           cd jni
-          ndk-build 2> build_error.log
+          ndk-build
           cat build_error.log
 
       - name: Check Build Status
