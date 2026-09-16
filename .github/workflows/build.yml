@@ -103,6 +103,29 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: P0.7 Telegram ZIP Delivery
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: Root-Assistant-PHASE5-P0.5.zip
+          message: |
+            📦 ROOT ASSISTANT ZIP DELIVERY
+
+            Phase: PHASE 5 — P0 Automation Bridge
+            Step: P0.7 — Telegram ZIP Delivery
+
+            Status: ${{ job.status }}
+            Run: #${{ github.run_number }}
+            Commit: ${{ github.sha }}
+
+            ZIP: Root-Assistant-PHASE5-P0.5.zip
+            ZIP Integrity: VERIFIED
+            GitHub Artifact: VERIFIED
+
+            Next: CHATGPT_READBACK
+
       - name: Telegram Checkpoint
         if: always()
         uses: appleboy/telegram-action@master
@@ -113,7 +136,7 @@ jobs:
             🚀 ROOT ASSISTANT CHECKPOINT
 
             Phase: PHASE 5 — P0 Automation Bridge
-            Step: P0.6 — ZIP Delivery Checkpoint
+            Step: P0.7 — Telegram ZIP Delivery Checkpoint
 
             Status: ${{ job.status }}
             Run: #${{ github.run_number }}
