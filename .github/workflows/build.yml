@@ -131,6 +131,28 @@ jobs:
 
             Next: CHATGPT_READBACK
 
+      - name: P2.0 Engine Audit Baseline
+        if: always()
+        run: |
+          set -e
+          echo "=================================================="
+          echo "PHASE 5 — P2 ENGINE AUDIT"
+          echo "P2.0 — ENGINE AUDIT BASELINE"
+          echo "=================================================="
+          test -f jni/main.cpp
+          test -f jni/Android.mk
+          test -f jni/Application.mk
+          grep -q "ModuleBase" jni/main.cpp
+          grep -q "onLoad" jni/main.cpp
+          grep -q "REGISTER_ZYGISK_MODULE" jni/main.cpp
+          echo "ENGINE SOURCE: PRESENT"
+          echo "ZYGISK LIFECYCLE: PRESENT"
+          echo "BUILD CONTRACT: PRESENT"
+          echo "ENGINE IMPLEMENTATION: NOT MODIFIED BY AUDIT"
+          echo "P2.0 RESULT: PASS"
+          echo "NEXT: P2.1 CAPABILITY MAPPING"
+          echo "=================================================="
+
       - name: Telegram Checkpoint
         if: always()
         uses: appleboy/telegram-action@master
