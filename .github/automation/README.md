@@ -1,39 +1,21 @@
-# Root-Assistant Automation Bridge
+# Root-Assistant Automation Controller
 
-## P0.1 — Automation Bridge Contract
+## P0 Automation Loop
 
-This directory defines the machine-readable contract used by the existing GitHub Actions + Telegram checkpoint infrastructure.
+The controller monitors the GitHub Actions push workflow and reads the
+machine-readable `.github/automation/state.json` checkpoint.
 
-### State model
+State flow:
 
-- `PENDING` — checkpoint created, not executed.
-- `RUNNING` — execution in progress.
-- `PASS` — all required validation gates passed.
-- `FAIL` — required gate failed; progression stops.
-- `BLOCKED` — required external condition unavailable.
+PENDING → RUNNING → PASS
+                 ↘ FAIL
+                 ↘ BLOCKED
 
-### Required fields
+Telegram remains the durable human checkpoint.
 
-- `schema_version`
-- `phase`
-- `checkpoint`
-- `step`
-- `status`
-- `commit_sha`
-- `run_number`
-- `timestamp`
-- `next_action`
-- `failure_stage`
-- `failure_reason`
+The controller does not modify engine code, existing build infrastructure,
+or established repository filenames.
 
-### Progression rule
+Usage:
 
-`PASS` may advance to the next checkpoint. `FAIL` and `BLOCKED` stop automatic progression.
-
-Telegram remains the durable human-visible checkpoint.
-GitHub Actions remains the execution authority.
-
-### Scope
-
-P0.1 only establishes the automation bridge contract.
-Existing module files, engine code, build structure, and Telegram notification mechanism remain unchanged.
+./.github/automation/controller.sh
