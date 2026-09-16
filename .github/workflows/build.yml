@@ -169,6 +169,92 @@ d["next_action"]="WAIT_FOR_CHATGPT"
 p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
 PY3
 
+      - name: P0.3 Final Persistent Checkpoint
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+
+          mkdir -p .github/automation
+
+          STATUS="FAIL"
+          NEXT_ACTION="STOP"
+          COMPILE="${build_status:-FAIL}"
+          PACKAGE="FAIL"
+          ZIP="FAIL"
+
+          if [ "${build_status:-}" = "SUCCESS" ]; then
+            COMPILE="PASS"
+          fi
+
+          if [ -n "${ZIP_NAME:-}" ] && [ -f "${ZIP_NAME}" ]; then
+            PACKAGE="PASS"
+            ZIP="PASS"
+          fi
+
+          if [ "${build_status:-}" = "SUCCESS" ] && [ "$ZIP" = "PASS" ]; then
+            STATUS="PASS"
+            NEXT_ACTION="WAIT_FOR_CHATGPT"
+          fi
+
+          cat > .github/automation/state.json <<STATE
+{
+  "schema_version": "1.0",
+  "phase": "PHASE 5 — P0 Automation Bridge",
+  "checkpoint": "P0.3",
+  "step": "P0.3 — Persistent Machine-Readable State",
+  "status": "$STATUS",
+  "commit_sha": "${GITHUB_SHA}",
+  "run_number": "${GITHUB_RUN_NUMBER}",
+  "timestamp": "$(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M:%S WIB')",
+  "compile": "$COMPILE",
+  "package": "$PACKAGE",
+  "zip_integrity": "$ZIP",
+  "failure_stage": "${failure_stage:-}",
+  "failure_reason": "${error_details:-}",
+  "next_action": "$NEXT_ACTION"
+}
+STATE
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .github/automation/state.json
+          git diff --cached --quiet || \
+            git commit -m "ci(P0.3): persist final checkpoint [skip ci]"
+
+          git push origin HEAD:main || true
+
+          echo "P0.3_FINAL_STATUS=$STATUS"
+          echo "P0.3_COMPILE=$COMPILE"
+          echo "P0.3_PACKAGE=$PACKAGE"
+          echo "P0.3_ZIP=$ZIP"
+          echo "P0.3_STATE_PERSISTED=ATTEMPTED"
+
+      - name: P0.3 Telegram Failure-Safe
+        if: always()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            🚀 ROOT ASSISTANT CHECKPOINT
+
+            Phase: PHASE 5 — P0 Automation Bridge
+            Step: P0.3 — Persistent Machine-Readable State
+            Status: ${{ job.status }}
+            Checkpoint: P0.3
+            Commit: ${{ github.sha }}
+            Build Run: #${{ github.run_number }}
+
+            Compile: ${{ env.build_status || 'NOT_REACHED' }}
+            ZIP: ${{ env.ZIP_NAME || 'NOT_CREATED' }}
+
+            Persistent State: .github/automation/state.json
+
+            Action: CHATGPT_READBACK
+
       - name: Send Telegram Notification (Success)
         if: env.build_status == 'SUCCESS'
         uses: appleboy/telegram-action@master
