@@ -37,8 +37,9 @@ jobs:
           echo "COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
-          echo "RA_PHASE=PHASE 5 — P1 Foundation" >> $GITHUB_ENV
-          CHECKPOINT="P1.5"; echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV; echo "RA_STEP=P1.5 — Runtime Lifecycle" >> $GITHUB_ENV
+          echo "RA_PHASE=PHASE 5 — P0 Automation Bridge" >> $GITHUB_ENV
+          CHECKPOINT="P0.2"; echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV; echo "RA_STEP=P0.2 — Machine-Readable Checkpoint" >> $GITHUB_ENV
+          echo "RA_STATE=RUNNING" >> $GITHUB_ENV
           if [ -f module.prop ]; then
             RAW_VERSION=$(grep '^version=' module.prop | cut -d'=' -f2 | tr -d '\r')
             CLEAN_VERSION=$(echo "$RAW_VERSION" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]/-/g')
