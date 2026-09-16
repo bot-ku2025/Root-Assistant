@@ -39,10 +39,10 @@ jobs:
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "RA_PHASE=PHASE 5 — P0 Automation Bridge" >> $GITHUB_ENV
-          CHECKPOINT="P0.3.4"
+          CHECKPOINT="P0.3.6"
           echo "CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV
           echo "RA_CHECKPOINT=$CHECKPOINT" >> $GITHUB_ENV
-          echo "RA_STEP=P0.3.4 — Persistent Machine-Readable State" >> $GITHUB_ENV
+          echo "RA_STEP=P0.3.6 — Automated Failure Capture" >> $GITHUB_ENV
           echo "RA_STATE=RUNNING" >> $GITHUB_ENV
           mkdir -p .github/automation
           cat > .github/automation/state.json <<STATE
@@ -50,7 +50,7 @@ jobs:
   "schema_version": "1.0",
   "phase": "PHASE 5 — P0 Automation Bridge",
   "checkpoint": "$CHECKPOINT",
-  "step": "P0.3.4 — Persistent Machine-Readable State",
+  "step": "P0.3.6 — Automated Failure Capture",
   "status": "RUNNING",
   "commit_sha": "$COMMIT_SHA",
   "run_number": "${GITHUB_RUN_NUMBER}",
@@ -73,27 +73,30 @@ STATE
 
       - name: Build with NDK & Capture Error Log
         id: compile
-        continue-on-error: false
+        continue-on-error: true
         run: |
+          set +e
           cd jni
-          ndk-build
-          cat build_error.log
+          ndk-build 2>&1 | tee build_output.log
+          RC=${PIPESTATUS[0]}
+          test -s obj/local/arm64-v8a/librootassistant.so
+          ARTIFACT_RC=$?
+          echo "NDK_BUILD_RC=$RC"
+          echo "ARTIFACT_RC=$ARTIFACT_RC"
+          if [ "$RC" -eq 0 ] && [ "$ARTIFACT_RC" -eq 0 ]; then
+            exit 0
+          fi
+          exit 1
 
       - name: Check Build Status
         id: check_status
+        if: always()
         run: |
-          if [ -s jni/build_error.log ] && grep -i "error" jni/build_error.log; then
+          if [ "${{ steps.compile.outcome }}" != "success" ] || [ ! -s jni/obj/local/arm64-v8a/librootassistant.so ]; then
             echo "build_status=FAILURE" >> $GITHUB_ENV
-            ERROR_MSG=$(awk '
-              /fatal error:/ { print; exit }
-              /error:/ && !/make\[[0-9]+\]:/ { print; exit }
-              /undefined reference to/ { print; exit }
-              /No such file or directory/ { print; exit }
-              /Permission denied/ { print; exit }
-              /command not found/ { print; exit }
-            ' jni/build_error.log)
+            ERROR_MSG=$(grep -E "fatal error:|error:|undefined reference|No such file|Permission denied|command not found" jni/build_output.log 2>/dev/null | head -n 1 || true)
             if [ -z "$ERROR_MSG" ]; then
-              ERROR_MSG="Root cause tidak dapat ditentukan secara otomatis."
+              ERROR_MSG="NDK build gagal atau librootassistant.so tidak terbentuk."
             fi
             ERROR_MSG=$(printf "%s" "$ERROR_MSG" | tr "\n" " " | sed "s/[[:space:]]\+/ /g")
             echo "error_details=$ERROR_MSG" >> $GITHUB_ENV
@@ -231,7 +234,7 @@ PY3
   "schema_version": "1.0",
   "phase": "PHASE 5 — P0 Automation Bridge",
   "checkpoint": "$CHECKPOINT",
-  "step": "P0.3.4 — Persistent Machine-Readable State",
+  "step": "P0.3.6 — Automated Failure Capture",
   "status": "$STATUS",
   "commit_sha": "${GITHUB_SHA}",
   "run_number": "${GITHUB_RUN_NUMBER}",
@@ -273,10 +276,10 @@ STATE
             🚀 ROOT ASSISTANT CHECKPOINT
 
             Phase: PHASE 5 — P0 Automation Bridge
-            Step: P0.3.4 — Persistent Machine-Readable State
+            Step: P0.3.6 — Automated Failure Capture
 
             Status: ${{ job.status }}
-            Checkpoint: P0.3.4
+            Checkpoint: P0.3.6
             Commit: ${{ github.sha }}
             Build Run: #${{ github.run_number }}
 
