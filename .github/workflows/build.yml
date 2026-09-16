@@ -94,6 +94,15 @@ jobs:
           echo "ZIP INTEGRITY: PASS"
           echo "=================================================="
 
+      - name: P0.6 Upload ZIP Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Root-Assistant-PHASE5-P0.5
+          path: Root-Assistant-PHASE5-P0.5.zip
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Telegram Checkpoint
         if: always()
         uses: appleboy/telegram-action@master
@@ -104,7 +113,7 @@ jobs:
             🚀 ROOT ASSISTANT CHECKPOINT
 
             Phase: PHASE 5 — P0 Automation Bridge
-            Step: P0.5 — Package/ZIP Integrity Checkpoint
+            Step: P0.6 — ZIP Delivery Checkpoint
 
             Status: ${{ job.status }}
             Run: #${{ github.run_number }}
